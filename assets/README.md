@@ -1,0 +1,17 @@
+# Spectypus visual assets
+
+- `spectypus-logo.png`: website/README wordmark; 2172 × 724 RGBA PNG with
+  real transparency. Generated using the built-in image generation tool.
+  Navy lettering is designed for a light background; on a dark website place
+  it on a light brand panel. The spectrum-shaped platypus and supernova star
+  represent many spectra contributing to one object-level interpretation.
+- `workflow.svg`: editable, deterministic workflow diagram. Its labels describe
+  the current classification pipeline, starting with already reduced spectra.
+  The two engine branches are logical alternatives, not concurrent execution.
+
+The source-distribution manifest includes these assets. Keep implementation and
+scientific contracts in `docs/USAGE.md`, not in this asset record.
+
+## Logo generation prompt
+
+Use case: logo-brand. Create a polished, distinctive logo for Spectypus, a scientific Python tool that takes batches of already reduced supernova spectra, compares each against multiple template-matching classifiers, and combines evidence across observing epochs for each supernova. Asset: production-ready transparent PNG logo for a website header and GitHub README. Horizontal brand lockup with a compact symbol on the left and the exact word 'Spectypus' on the right in a refined, highly legible geometric sans-serif wordmark. Symbol: a clever minimal platypus-inspired silhouette, recognizable by its broad bill, whose body is formed by three clean spectral curves with asymmetric peaks and absorption troughs; the traces converge toward a small four-point supernova star, suggesting many spectra contributing to one interpretation. Scientific, welcoming, confident and restrained; flat vector-like shapes and smooth precise edges, excellent small-scale legibility. Navy blue primary outlines and wordmark, teal and warm coral spectral accents. No gradients, no photorealism, no 3D effects, no shadows, no mascots with human features, no equations, no extra words, no arrows or flowchart boxes. Balanced compact composition, intentional negative space, no cropped content. The background must be truly transparent with clean alpha, not a checkerboard. This is a logo rather than a detailed infographic.
