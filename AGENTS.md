@@ -20,5 +20,7 @@ Inspect the working tree before editing; preserve unrelated local changes.
   annotations into immutable engine results.
 - Append consequential changes to `docs/DEVELOPMENT_LOG.md`; keep current status
   in the roadmap and evidence assessments in `docs/VALIDATION.md`.
+- Keep README compact; detailed usage and scientific contracts belong in
+  `docs/USAGE.md`. Store documentation and website graphics in `assets/`.
 - GitHub/PyPI publication and public badge endpoints require authorization.
   Never display a live badge or calibrated-accuracy claim without its evidence.

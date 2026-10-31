@@ -8,7 +8,8 @@ large campaign. Initial redshifts come from a user-supplied table; missing
 redshifts trigger free fits. Automatic line/host redshifts follow later.
 
 This is the canonical future-work plan. The [README](../../README.md) owns
-current commands/contracts; [VALIDATION.md](../VALIDATION.md) owns evidence and
+the quick start; [USAGE.md](../USAGE.md) owns detailed commands/contracts;
+[VALIDATION.md](../VALIDATION.md) owns evidence and
 limitations. No website, probability calibration or remote CI is implied by
 the existence of this plan.
 

@@ -5,8 +5,8 @@ as retrospective decision records.
 
 | Decision | Owner |
 | --- | --- |
-| Native score semantics and equal-engine support baseline | [README: outputs and score meaning](../../README.md#outputs-and-score-meaning) |
-| Explicit units/frames and catalog-first redshift routing | [README: redshift and input conventions](../../README.md#redshift-and-input-conventions) |
+| Native score semantics and equal-engine support baseline | [Usage: outputs and score meaning](../USAGE.md#outputs-and-score-meaning) |
+| Explicit units/frames and catalog-first redshift routing | [Usage: redshift and input conventions](../USAGE.md#redshift-and-input-conventions) |
 | Dedicated environment; engines/banks remain independent assets | [README: install](../../README.md#install), [environment.yml](../../environment.yml) |
 | Planned local results viewer and calibrated-evaluation gates | [Roadmap](../roadmap/SPECTYPUS_ROADMAP.md) |
 

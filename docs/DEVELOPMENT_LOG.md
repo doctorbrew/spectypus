@@ -54,3 +54,24 @@ staged-file/whitespace checks and confirmation that existing remote history is
 an ancestor of the development commits. This is a source-development push,
 not a package release or a claim of verified GitHub Actions/badges. Local
 validation links are explicitly labelled as unavailable from a fresh clone.
+
+## 2026-10-31 — Spectypus identity and compact getting-started guide
+
+Added a transparent Spectypus logo combining a spectrum-shaped platypus,
+supernova star and wordmark. Saved the generated PNG and its prompt under
+`assets/`, alongside an editable workflow SVG showing reduced-spectrum inputs,
+redshift routing, both classifier adapters, native rankings and object support.
+The diagram represents logical engine branches while explicitly retaining
+serial execution; it does not imply a raw-data reduction capability.
+
+Reduced README from 1,804 to 438 whitespace-delimited words. It now focuses on
+purpose, avoided manual orchestration, classifier choice, installation and a
+bounded first run. No measured speedup or accuracy improvement is claimed.
+Moved the detailed guide and scientific contracts to `docs/USAGE.md` and
+updated the index, decision links and history policy to that single owner.
+Source distributions include the visual assets. Pipeline behavior is unchanged.
+
+Verified PNG transparency, SVG structure and visual layout, 35 local links,
+CLI command syntax and a synthetic manifest/plan dry run with zero classifier
+executions. A fresh source distribution includes both graphics and the detailed
+usage guide. Validation evidence is under `results/branding-doc-check-q1g3jr0q/`.

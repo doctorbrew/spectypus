@@ -1,6 +1,7 @@
 # Documentation and history ownership
 
-- `README.md`: current usage and scientific/software contracts.
+- `README.md`: compact overview, classifier choice and quick start.
+- `docs/USAGE.md`: detailed configuration and scientific/software contracts.
 - `docs/PROJECT_INDEX.md`: pointers to owners, with no duplicated narratives.
 - `docs/roadmap/SPECTYPUS_ROADMAP.md`: future work, dependencies, acceptance
   criteria and current milestone status.

@@ -4,7 +4,9 @@ This file routes readers to the owner of each topic; it is not a history log.
 
 | Topic | Owner | When to read |
 | --- | --- | --- |
-| Installation, commands, inputs, outputs, support formula | [README](../README.md) | Running or integrating Spectypus |
+| Overview, classifier choice and quick start | [README](../README.md) | Getting started |
+| Detailed configuration, inputs, outputs and support formula | [USAGE.md](USAGE.md) | Running or integrating Spectypus beyond the quick start |
+| Logo, workflow graphic and generation prompt | [assets/README.md](../assets/README.md) | Reusing or editing the visual assets |
 | Conda recipe | [environment.yml](../environment.yml) | Creating the dedicated environment |
 | Package/runtime dependencies | [pyproject.toml](../pyproject.toml) | Changing installation requirements |
 | Verified behavior and scientific limitations | [VALIDATION.md](VALIDATION.md) | Assessing how well the pipeline works |
