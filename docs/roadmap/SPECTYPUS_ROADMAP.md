@@ -10,8 +10,7 @@ redshifts trigger free fits. Automatic line/host redshifts follow later.
 This is the canonical future-work plan. The [README](../../README.md) owns
 the quick start; [USAGE.md](../USAGE.md) owns detailed commands/contracts;
 [VALIDATION.md](../VALIDATION.md) owns evidence and
-limitations. No website, probability calibration or remote CI is implied by
-the existence of this plan.
+limitations. Probability calibration and remote CI remain unimplemented.
 
 ## Milestones
 
@@ -19,8 +18,8 @@ the existence of this plan.
 | --- | --- | --- | --- |
 | P0 | Package, reproducible execution and dedicated development environment | Complete for the bounded v0.1 validation scope | None |
 | P1 | Measure classification quality against independent labels | Proposed; evaluation data required | P0 |
-| P2 | Local results website for campaign and object review | Planned, not implemented | P0; freeze viewer evidence contract first |
-| P3 | Measured, bounded execution at campaign scale | Planned | P0; representative timing inputs |
+| P2 | Local results website for campaign and object review | First viewer implemented; overlays and notes pending | P0; verified saved evidence |
+| P3 | Measured, bounded execution at campaign scale | Serial SLSN batch launched; measurements accumulating | P0; representative timing inputs |
 | P4 | Improve and calibrate evidence combination | Deferred until benchmark exists | P1 |
 | P5 | Line/host-assisted redshift hypotheses | Deferred | P1; redshift-labelled validation set |
 | P6 | Reproducible release and verified GitHub badges | Later milestone | GitHub connection/authorization; release checks |
@@ -102,10 +101,13 @@ states; rerendering does not mutate classifier evidence or require refitting.
 
 ### P2.2 — campaign overview and review queue
 
-Proposed runtime: optional `spectypus[web]` with FastAPI/Plotly and local-only
-serving by default, following the existing Sample Atlas visual language.
-Keep core batch execution independent of the web dependencies. This is a
-design direction, not a dependency or command available today.
+Current runtime: optional `spectypus[web]` with FastAPI, vanilla JavaScript and
+SVG input-spectrum plots, served on localhost with `spectypus review`. It uses
+the Sample Atlas visual language and keeps core execution independent of web
+dependencies. Verified current-plan records supply scores; summaries and
+CSV exports are not trusted as classifier evidence. The first viewer covers
+counts, source/class/name filters, pagination, a review filter, object fits,
+and input spectra. More filters, native-score plots and overlays remain below.
 
 - Completion/failure/blocked/no-match counts with correct denominators.
 - Search and filters by object, batch, class, engine, phase, instrument,
@@ -136,8 +138,8 @@ their provenance; never replace machine labels silently.
 
 Acceptance: navigable campaign → object → spectrum → match flow; consistent
 selection across plots/tables; keyboard-readable controls; gap/mask and axis-unit
-tests; notes survive restart and do not change an attempt hash. No server or
-website is built as part of this roadmap entry.
+tests; notes survive restart and do not change an attempt hash. Notes and template
+overlays remain future work; the initial read-only viewer does not save notes.
 
 ## P3 — campaign scale and operational reliability
 

@@ -39,11 +39,11 @@ classification successes or a representative accuracy sample.
   noise treatment. FITS input, line-derived redshifts and reduction are absent.
 - Execution is serial within a batch. No thousand-spectrum throughput or
   memory claim has been measured.
-- There is **no results website or batch visualization command yet**. Current
-  products are CSV/JSON, logs and native artifacts. Diagnostic plotting is
-  disabled in the adapters; a uniform spectrum/template-overlay product is
-  not yet generated. Existing review websites in the source SLSN project have
-  not been packaged into Spectypus.
+- `spectypus review` provides a local read-only results website: progress,
+  suggested-class counts, searchable objects, top native matches, and input
+  spectra with verified source hashes. Template overlays and review notes
+  remain unavailable. The older project's separate review websites are not
+  part of this package.
 
 ## Dedicated-environment validation
 
@@ -70,6 +70,33 @@ why passing core tests, package metadata checks, or `doctor` fingerprinting
 alone is not proof that native classifier execution works. Keep the initial
 failure attempts and the final conda/pip inventories for provenance. Runtime
 package versions do not identify every same-version native-binary rebuild.
+
+## Results viewer and first full local batch
+
+On 2026-10-31, 91 tests passed, including read-only result verification,
+corruption handling, input checksum changes, native-vote preservation when
+compacting the review data, pagination of a synthetic 1,000-spectrum blocked
+batch, and controller failure/concurrent-writer handling. JavaScript syntax,
+desktop/mobile HTML previews and packaged wheel assets were checked. The test
+client emits an upstream HTTPX deprecation warning; checks pass.
+
+Against the actual 3,876-record plan with four completed fits, loading and
+verifying the review snapshot and one input curve took 0.315 seconds and the
+process maximum RSS was about 117 MiB on this macOS host. This is an early,
+mostly pending snapshot measurement, not a full-completion memory/latency claim.
+The reader retains the top displayed candidates and all tied winning votes,
+instead of retaining every native candidate in memory.
+
+The full local batch was launched with 2,930 eligible fits. Its first four fixed
+fits completed in 30.1–34.1 seconds each, spanning a 208-sample spectrum and a
+107,973-sample spectrum. Fine free-redshift searches (NGSF 0–1 in 0.01 steps)
+were still executing at this checkpoint. No whole-campaign runtime or accuracy
+claim follows from those four fits. See [RESULTS_VIEWER.md](RESULTS_VIEWER.md)
+for exact scope and the live local status paths.
+
+Validation products are in `results/slsn_20261031/`: `viewer-tests.xml`,
+`viewer-validation.json`, `viewer-preview.html`, `import.json`, `launcher.json`,
+`campaign_status.json`, and immutable attempt directories below `run/`.
 
 ## Next falsifiable evaluation
 

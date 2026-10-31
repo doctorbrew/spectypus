@@ -10,10 +10,10 @@ Its combined scores are transparent **uncalibrated support**, not class
 probabilities or secure scientific classifications.
 
 For current capabilities and evidence, read [validation](VALIDATION.md).
-The [roadmap](roadmap/SPECTYPUS_ROADMAP.md) tracks the planned results
-website, campaign-scale execution, scientific evaluation and later CI/badges.
+The [roadmap](roadmap/SPECTYPUS_ROADMAP.md) tracks further results review,
+campaign-scale execution, scientific evaluation and later CI/badges.
 The [project index](PROJECT_INDEX.md) routes development documentation.
-There is no results website in v0.1 yet.
+The local results viewer is described in [RESULTS_VIEWER.md](RESULTS_VIEWER.md).
 
 ## Install
 

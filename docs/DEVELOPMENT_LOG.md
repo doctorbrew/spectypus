@@ -75,3 +75,36 @@ Verified PNG transparency, SVG structure and visual layout, 35 local links,
 CLI command syntax and a synthetic manifest/plan dry run with zero classifier
 executions. A fresh source distribution includes both graphics and the detailed
 usage guide. Validation evidence is under `results/branding-doc-check-q1g3jr0q/`.
+
+
+## 2026-10-31 — results website and full local SLSN batch
+
+Pushed the logo/workflow and compact README in commits `b59bbd3` and `8ba4b0a`.
+Added the optional localhost results viewer (`spectypus review`), with verified
+current-plan reads, progress/class counts, paginated filters, object fits, top
+native candidates and original-input plots. Missing template curves remain
+unavailable. Compact review records retain every tied winning vote. Core batch
+execution still has no web dependencies.
+
+Read the existing source atlas without modifying it and froze 3,876 spectrum
+records for 344 catalogue objects. The plan has 2,930 eligible classifier
+attempts on 1,481 unique spectra from 214 objects. Input checks, mostly unknown frame/unit metadata,
+block 2,378 records; 17 repeats contribute once, and SAGE has 32
+additional support exclusions. Thirty targets have no downloaded Fritz spectra;
+this does not imply absence from other archives.
+
+Launched a serial batch in the dedicated environment with a frozen package
+snapshot, single-thread numerical libraries, a 900-second per-fit timeout and
+a 20-GiB free-space stop. Short/long fixed/free representatives run first as
+ordinary batch members. The controller records the active fit and stops after
+six consecutive failures. New controller tests protect an active status file
+from a second writer. The maintained controller also handles SIGTERM; the
+already launched original controller snapshot is preserved unchanged.
+
+Validation: 91 tests passed; JS syntax and desktop/mobile shell previews passed;
+wheel assets verified. Actual early snapshot read/curve verification took about
+0.315 seconds with 117 MiB process maximum RSS. The first four fixed fits
+completed, while the first fine free-redshift search was still running. This is
+partial execution evidence, not measured classification accuracy. Paths, scope,
+launch/resume instructions and remaining viewer work are documented in
+`docs/RESULTS_VIEWER.md` and `docs/VALIDATION.md`.
