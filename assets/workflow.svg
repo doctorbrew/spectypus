@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="554" viewBox="0 0 960 554" role="img" aria-labelledby="title desc">
+  <title id="title">Spectypus: from reduced spectra to suggested classifications</title>
+  <desc id="desc">Reduced spectra and optional redshifts are checked before fitting. Known redshifts use fixed fits; missing redshifts use free fits. SNID-SAGE, NGSF, or both find the best template matches for each spectrum. Results across observations are combined into a suggested class and score for each supernova, showing agreement or uncertainty.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#597181"/>
+    </marker>
+    <style>
+      text { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .title { font-size: 22px; font-weight: 650; fill: #102d46; }
+      .detail { font-size: 16px; fill: #425c6c; }
+      .label { font-size: 12px; font-weight: 700; letter-spacing: 1.4px; fill: #597181; }
+      .wire { fill: none; stroke: #597181; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow); }
+      .box { stroke: #d9e1e3; stroke-width: 1.5; }
+    </style>
+  </defs>
+  <rect width="960" height="554" rx="20" fill="#f7f8f5"/>
+
+  <rect class="box" x="36" y="24" width="414" height="92" rx="12" fill="#ffffff"/>
+  <text class="label" x="56" y="48">INPUT</text>
+  <text class="title" x="56" y="76">Reduced spectra</text>
+  <text class="detail" x="56" y="100">Batches · supernovae · observing epochs</text>
+
+  <rect class="box" x="510" y="24" width="414" height="92" rx="12" fill="#ffffff"/>
+  <text class="label" x="530" y="48">OPTIONAL METADATA</text>
+  <text class="title" x="530" y="76">Object redshifts</text>
+  <text class="detail" x="530" y="100">Known z → fixed fit · missing z → free fit</text>
+
+  <path class="wire" d="M243 116 V132 H400 V148"/>
+  <path class="wire" d="M717 116 V132 H560 V148"/>
+  <rect class="box" x="80" y="150" width="800" height="76" rx="12" fill="#eaf0f3"/>
+  <text class="title" x="480" y="181" text-anchor="middle">Check IDs, wavelength frame and units</text>
+  <text class="detail" x="480" y="208" text-anchor="middle">Stage observer-frame inputs; unsupported spectra stay flagged</text>
+
+  <path class="wire" d="M320 226 V264"/>
+  <path class="wire" d="M640 226 V264"/>
+  <text class="label" x="480" y="251" text-anchor="middle">EITHER OR BOTH · SERIAL EXECUTION</text>
+  <rect x="80" y="266" width="360" height="106" rx="12" fill="#e2f2ee" stroke="#88bfb6" stroke-width="1.5"/>
+  <text class="title" x="100" y="299">SNID-SAGE</text>
+  <text class="detail" x="100" y="325">Correlation template matching</text>
+  <text class="detail" x="100" y="351">Higher HσLAP-CCC ranks first</text>
+  <rect x="520" y="266" width="360" height="106" rx="12" fill="#fff0e9" stroke="#dfb39d" stroke-width="1.5"/>
+  <text class="title" x="540" y="299">NGSF</text>
+  <text class="detail" x="540" y="325">Supernova + host-galaxy fits</text>
+  <text class="detail" x="540" y="351">Lower CHI2/dof2 ranks first</text>
+
+  <path d="M260 372 V406 M700 372 V394 Q700 406 688 406 H260" fill="none" stroke="#597181" stroke-width="2" stroke-linejoin="round"/>
+  <path class="wire" d="M260 406 V430"/>
+  <circle cx="260" cy="406" r="3.5" fill="#597181"/>
+
+  <rect class="box" x="80" y="432" width="360" height="98" rx="12" fill="#ffffff"/>
+  <text class="title" x="100" y="464">Top 10 per spectrum + engine</text>
+  <text class="detail" x="100" y="490">Native matches, phase and redshift</text>
+  <text class="detail" x="100" y="514">matches.csv · spectra.csv</text>
+  <path class="wire" d="M440 481 H518"/>
+  <rect x="520" y="432" width="360" height="98" rx="12" fill="#102d46"/>
+  <text x="540" y="464" font-size="22" font-weight="650" fill="#ffffff">Combine spectra per supernova</text>
+  <text x="540" y="490" font-size="16" fill="#d8e7ec">Suggested class and score</text>
+  <text x="540" y="514" font-size="16" fill="#d8e7ec">Show agreement or uncertainty</text>
+</svg>
