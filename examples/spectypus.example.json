@@ -1,0 +1,24 @@
+{
+  "engines": {
+    "ngsf": {
+      "enabled": true,
+      "parameters": "/path/to/NGSF/parameters.json",
+      "python": "/path/to/classify/bin/python",
+      "root": "/path/to/NGSF"
+    },
+    "snid_sage": {
+      "enabled": true,
+      "python": "/path/to/classify/bin/python",
+      "templates": "/path/to/SNID-SAGE/templates",
+      "threshold": 1.5
+    }
+  },
+  "free_redshift": {
+    "max": 1.0,
+    "min": 0.0,
+    "step": 0.01
+  },
+  "redshift_mode": "auto",
+  "timeout_seconds": 600,
+  "top_n": 10
+}

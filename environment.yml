@@ -1,0 +1,14 @@
+name: spectypus
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  # Tested engine runtime; the Spectypus core's Python floor remains >=3.10.
+  - python=3.10
+  - pip
+  # Use conda native binaries. The pip SciPy 1.15.2 wheel failed to load on
+  # the tested macOS host. Keep these versions equal to the engines extra.
+  - numpy=2.2.6
+  - scipy=1.15.2
+  - pip:
+      - -e .[dev,engines]
