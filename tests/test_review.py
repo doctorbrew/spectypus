@@ -98,3 +98,48 @@ def test_thousand_spectrum_partial_campaign_is_paginated(tmp_path, source_factor
         page = client.get("/api/objects?offset=990&limit=50&review=true").json()
         assert page["total"] == 1000 and len(page["rows"]) == 10
         assert page["rows"][0]["object_id"] == "SN-0990"
+
+
+def test_engine_mode_buttons_distinguish_finished_no_match_and_pending():
+    from spectypus.review import fit_states
+    runs=[{'engine':'ngsf','mode':'fixed','status':'completed'},
+          {'engine':'ngsf','mode':'fixed','status':'no_good_match'},
+          {'engine':'ngsf','mode':'free','status':'failed'},
+          {'engine':'snid_sage','mode':'fixed','status':'pending'}]
+    s=fit_states(runs)
+    assert s['ngsf']['fixed']['finished'] and s['ngsf']['fixed']['no_good_match']==1
+    assert not s['ngsf']['free']['finished'] and s['ngsf']['free']['status']=='failed'
+    assert s['snid_sage']['free']['status']=='not requested'
+
+
+def test_ztf_sample_and_date_filters_use_explicit_membership(tmp_path,source_factory,manifest_factory,config_factory,fake_engine):
+    pytest.importorskip('fastapi');pytest.importorskip('httpx')
+    from fastapi.testclient import TestClient
+    from spectypus.review import create_app
+    from spectypus.io import write_csv
+    base=source_factory(z='.1');row={**base,'samples':'["chen", "fritz"]','ztf_id':'ZTF18abcdefg','tns_name':'SN2018abc','priority_ztf':'true'}
+    path=tmp_path/'sources.csv';write_csv(path,[row],list(row));out=tmp_path/'out';run_batch(path,config_factory(),out)
+    with TestClient(create_app(out)) as c:
+        assert c.get('/api/objects?ztf=true&priority=true&sample=chen&q=ZTF18').json()['total']==1
+        assert c.get('/api/objects?sample=gomez').json()['total']==0
+        assert c.get('/api/fit?execution_id=unknown').status_code==404
+
+
+def test_fit_curve_requires_verified_matching_candidate(tmp_path,source_factory,manifest_factory,config_factory,fake_engine):
+    from spectypus.review import fit_curve
+    out=tmp_path/'out';run_batch(manifest_factory([source_factory(z='.1')]),config_factory(),out)
+    path=next((out/'attempts').rglob('record.json'));record=read_json(path)
+    curve=path.with_name('fit_curves.json')
+    write_json(curve,{'schema':'spectypus-fit-curves/1','engine':'snid_sage','flux_unit':'normalized','curves':[
+        {'template':'template-A','score':5.,'available':True,'observed':[[3000,1],[9000,2]],'model':[[3000,1],[9000,2]]}]})
+    record['artifacts']['fit_curves.json']=file_hash(curve);write_json(path,record);path.with_name('record.sha256').write_text(file_hash(path)+'\n')
+    snapshot=read_snapshot(out);run=snapshot['runs'][0]
+    assert fit_curve(snapshot,run['execution_id'])['available']
+    curve.write_text('{}')
+    assert not fit_curve(snapshot,run['execution_id'])['available']
+
+
+def test_viewer_completion_waits_for_diagnostic_free_fits(tmp_path,source_factory,manifest_factory,config_factory,fake_engine):
+    out=tmp_path/'out';run_batch(manifest_factory([source_factory(z='.1')]),config_factory(redshift_mode='both'),out,max_runs=1)
+    obj=read_snapshot(out)['summary']['objects'][0]
+    assert obj['primary_complete'] and not obj['complete'] and obj['needs_review']
