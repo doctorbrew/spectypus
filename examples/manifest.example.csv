@@ -1,0 +1,4 @@
+spectrum_id,object_id,path,wavelength_frame,wavelength_unit,redshift,redshift_source,batch,mjd,phase_rest_days,instrument
+example-epoch1,SN-example,/path/to/epoch1.dat,observer,angstrom,0.1,host_catalog,night1,60000,,instrument
+example-epoch2,SN-example,/path/to/epoch2.dat,observer,angstrom,,,night2,60005,,instrument
+unknown-epoch1,SN-unknown,/path/to/unknown.dat,observer,angstrom,,,night2,60007,,instrument
