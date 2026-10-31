@@ -13,6 +13,8 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=7", "build>=1"]
+web = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
+webtest = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "httpx>=0.27,<1"]
 engines = [
     "snid-sage==1.2.3",
     "numpy==2.2.6",
@@ -30,6 +32,9 @@ spectypus = "spectypus.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+spectypus = ["web/*.html", "web/*.css", "web/*.js", "web/*.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

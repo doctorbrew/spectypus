@@ -39,8 +39,25 @@ def main(argv: list[str] | None = None) -> int:
     summarize.add_argument("--output", type=Path, required=True)
     doctor = sub.add_parser("doctor", help="inspect configured interpreters, engine sources, and template banks")
     doctor.add_argument("--config", type=Path, required=True)
+    review = sub.add_parser("review", help="open a local read-only results website")
+    review.add_argument("--output", type=Path, required=True)
+    review.add_argument("--port", type=int, default=8013)
     args = parser.parse_args(argv)
     try:
+        if args.command == "review":
+            try:
+                import uvicorn
+                from .review import create_app
+                app = create_app(args.output)
+            except ImportError as exc:
+                raise ValueError("Install the viewer with: pip install 'spectypus[web]'") from exc
+            if not 1 <= args.port <= 65535:
+                raise ValueError("port must be between 1 and 65535")
+            if not (args.output / "plan.json").is_file():
+                raise ValueError("output has no plan.json; plan or run a batch first")
+            print(f"Spectypus results: http://127.0.0.1:{args.port}", flush=True)
+            uvicorn.run(app, host="127.0.0.1", port=args.port)
+            return 0
         if args.command == "init":
             if args.config.exists():
                 raise ValueError(f"refusing to overwrite {args.config}")
