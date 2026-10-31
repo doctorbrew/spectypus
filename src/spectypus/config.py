@@ -12,6 +12,8 @@ EXAMPLE = {
     "redshift_mode": "auto",
     "top_n": 10,
     "timeout_seconds": 600,
+    "telluric_windows": [],
+    "save_fit_curves": False,
     "free_redshift": {"min": 0.0, "max": 1.0, "step": 0.01},
     "engines": {
         "snid_sage": {"enabled": True, "python": "/path/to/classify/bin/python",
@@ -37,6 +39,8 @@ def load_config(path: Path | dict) -> dict:
     if unknown:
         raise ValueError(f"unknown configuration keys: {sorted(unknown)}")
     result = {**deepcopy(EXAMPLE), **data}
+    if type(result["save_fit_curves"]) is not bool:
+        raise ValueError("save_fit_curves must be boolean")
     if result["redshift_mode"] not in {"auto", "both", "free", "fixed"}:
         raise ValueError("redshift_mode must be auto, both, free, or fixed")
     if type(result["top_n"]) is not int or result["top_n"] < 1:
@@ -45,6 +49,18 @@ def load_config(path: Path | dict) -> dict:
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout_seconds must be positive and finite")
     result["timeout_seconds"] = timeout
+    windows = result["telluric_windows"]
+    if not isinstance(windows, list):
+        raise ValueError("telluric_windows must be a list of observer-frame Angstrom pairs")
+    checked = []
+    for pair in windows:
+        if not isinstance(pair, (list, tuple)) or len(pair) != 2:
+            raise ValueError("telluric window requires lower and upper wavelengths")
+        lo, hi = map(float, pair)
+        if not math.isfinite(lo) or not math.isfinite(hi) or not 0 < lo < hi:
+            raise ValueError("telluric window bounds must be finite, positive and ordered")
+        checked.append([lo, hi])
+    result["telluric_windows"] = sorted(checked)
     grid = result["free_redshift"]
     if not isinstance(grid, dict) or set(grid) != {"min", "max", "step"}:
         raise ValueError("free_redshift requires min, max, step")

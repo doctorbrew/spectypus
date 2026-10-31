@@ -147,6 +147,7 @@ def candidate_payload(result: Any, threshold: float) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--candidate-json", type=Path, required=True)
+    parser.add_argument("--fit-curves", type=Path)
     parser.add_argument("sage_args", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
     sage_args = list(args.sage_args)
@@ -172,7 +173,20 @@ def main(argv: list[str] | None = None) -> int:
         return 64
 
     original = identify.run_snid_analysis
+    original_preprocess = identify.preprocess_spectrum
     captured = False
+
+    def preprocessing_with_report(*call_args, **call_kwargs):
+        result, trace = original_preprocess(*call_args, **call_kwargs)
+        import numpy as np
+        mask = np.asarray(trace.get("mask_logbins", []), dtype=bool)
+        _atomic_json(args.candidate_json.with_name("mask_applied.json"), {
+            "schema": "spectypus-sage-mask/1",
+            "requested_observer_angstrom_windows": call_kwargs.get("wavelength_masks") or [],
+            "effective_ranges_including_native_masks": trace.get("pending_mask_ranges", []),
+            "masked_log_bins": int(mask.sum()), "log_grid_samples": int(mask.size),
+            "treatment": "native mask-aware log rebinning and continuum fitting"})
+        return result, trace
 
     def capturing_run(*call_args: Any, **call_kwargs: Any) -> Any:
         nonlocal captured
@@ -181,10 +195,41 @@ def main(argv: list[str] | None = None) -> int:
         payload = candidate_payload(result, threshold)
         payload["snid_sage_version"] = version
         _atomic_json(args.candidate_json, payload)
+        if args.fit_curves:
+            curves = []
+            import numpy as np
+            for candidate in payload["candidates"][:10]:
+                match = next((m for m in result.all_matches
+                              if str(_template_value(m.get('template') or {}, 'name', 'template_name', 'sn')) == candidate['template_name']
+                              and str(_template_value(m.get('template') or {}, 'age', 'epoch', 'phase')) == str(candidate['age_days'])
+                              and m.get('hsigma_lap_ccc') == candidate['score_value']), None)
+                item = {"rank": candidate["rank"], "template": candidate["template_name"],
+                        "score": candidate["score_value"], "redshift": candidate["redshift"],
+                        "available": False}
+                try:
+                    processed = result.processed_spectrum
+                    wave = np.asarray(processed['log_wave'], dtype=float)
+                    observed = np.asarray(processed['flat_flux'], dtype=float)
+                    native = (match.get('display_spectra') or match.get('spectra') or {}).get('flat')
+                    model_wave = np.asarray(native['wave'] if native else wave, dtype=float)
+                    model = np.asarray(native['flux'] if native else match['processed_flux'], dtype=float)
+                    if wave.shape != observed.shape or model_wave.shape != model.shape:
+                        raise ValueError('native curve array shapes differ')
+                    item.update(available=True, observed=list(zip(wave.tolist(), observed.tolist())),
+                                model=list(zip(model_wave.tolist(), model.tolist())))
+                except (KeyError, TypeError, AttributeError, ValueError) as exc:
+                    item['reason'] = str(exc)
+                curves.append(item)
+            _atomic_json(args.fit_curves, {"schema": "spectypus-fit-curves/1", "engine": "snid_sage",
+                "wavelength_frame": "observer", "wavelength_unit": "angstrom",
+                "flux_unit": "continuum-normalized residual flux",
+                "origin": "Native SAGE result.processed_spectrum and candidate display/processed arrays",
+                "curves": curves})
         captured = True
         return result, trace
 
     identify.run_snid_analysis = capturing_run
+    identify.preprocess_spectrum = preprocessing_with_report
     try:
         returncode = int(sage_main.main(sage_args))
     except Exception as exc:
@@ -197,6 +242,7 @@ def main(argv: list[str] | None = None) -> int:
         return 65
     finally:
         identify.run_snid_analysis = original
+        identify.preprocess_spectrum = original_preprocess
 
     if not captured:
         _atomic_json(

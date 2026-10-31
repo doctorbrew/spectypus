@@ -121,9 +121,18 @@ def build_command(run: dict, config: dict, directory: Path) -> tuple[list[str], 
     input_path = directory / "spectrum.txt"
     output = directory / "native"
     output.mkdir()
+    windows = config.get("telluric_windows", [])
+    write_json(directory / "spectral_features.json", {
+        "telluric_windows": windows, "wavelength_frame": "observer", "wavelength_unit": "angstrom",
+        "host_lines_masked": False, "supplied_redshift": run["redshift"],
+        "save_fit_curves": config.get("save_fit_curves", False), "top_n": config["top_n"],
+        "treatment": "SAGE native mask-aware preprocessing; NGSF object and template grid exclusion"})
     if name == "snid_sage":
         result = directory / "sage_candidates.json"
-        command = [cfg["python"], str(BRIDGE), "--candidate-json", str(result), "--", "identify",
+        command = [cfg["python"], str(BRIDGE), "--candidate-json", str(result)]
+        if config.get("save_fit_curves"):
+            command += ["--fit-curves", str(directory / "fit_curves.json")]
+        command += ["--", "identify",
                    str(input_path), cfg["templates"], "--output-dir", str(output), "--minimal",
                    "--no-plots", "--no-progress", "--profile", "optical", "--max-output-templates", str(config["top_n"]),
                    "--hsigma-lap-ccc-threshold", str(cfg["threshold"])]
@@ -132,10 +141,13 @@ def build_command(run: dict, config: dict, directory: Path) -> tuple[list[str], 
         else:
             grid = config["free_redshift"]
             command += ["--zmin", str(grid["min"]), "--zmax", str(grid["max"])]
+        if windows:
+            command += ["--wavelength-masks", *[f"{lo}:{hi}" for lo, hi in windows]]
         return command, directory, result
     params = read_json(Path(cfg["parameters"]))
     params.update(object_to_fit=str(input_path), saving_results_path=str(output) + os.sep,
                   show_plot=0, show_plot_png=False, how_many_plots=0)
+    params.update(mask_galaxy_lines=0, mask_telluric=int(bool(windows)))
     if run["mode"] == "fixed":
         z = run["redshift"]
         params.update(use_exact_z=1, z_exact=z, z_range_begin=z, z_range_end=z, z_int=0)
@@ -156,6 +168,8 @@ def build_command(run: dict, config: dict, directory: Path) -> tuple[list[str], 
     write_json(directory / "parameters.json", params)
     root = Path(cfg["root"])
     command = [cfg["python"], str(NGSF_BRIDGE), str(root / "run.py"), str(directory / "parameters.json")]
+    if windows or config.get("save_fit_curves"):
+        command += [str(directory / "spectral_features.json")]
     return command, root, output / "spectrum.csv"
 
 
