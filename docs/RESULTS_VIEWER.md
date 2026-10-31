@@ -1,5 +1,9 @@
 # Results website and SLSN batch
 
+**Current campaign:** see [OVERNIGHT.md](OVERNIGHT.md) for ZTF priorities, masked
+fixed/free fits, native overlays, and the sleep-protected launch command. The
+original unmasked batch below is retained as historical evidence.
+
 From the project directory:
 
 ```bash
@@ -17,7 +21,9 @@ and paginated objects, a needs-review filter, top matches for each spectrum and
 classifier, and the input spectrum. Viewing never starts a fit. Fixed/free modes
 and native score directions remain distinct. Scores are suggestions, not
 classification probabilities. Missing model curves are explicitly unavailable.
-Template overlays, zoomable model comparisons and saved review notes are pending.
+New runs can save model curves with `save_fit_curves: true`; the current masked
+campaign enables this. Older attempts without saved curves remain unavailable.
+Saved review notes and interactive zoom controls are pending.
 
 Only the frozen current plan and hash-verified attempt records supply class
 scores. Tampered results are flagged and contribute no votes. Original input
@@ -38,7 +44,7 @@ catalogue entries, not 344 confirmed SLSNe or a frozen rate numerator. Source
 channels remain labelled. Thirty Fritz targets had no downloaded Fritz spectra;
 their separate coverage list does not establish absence from the other archives.
 
-The dry plan contains 2,930 eligible fits on 1,481 spectra from 214 objects:
+The original unmasked dry plan contains 2,930 eligible fits on 1,481 spectra from 214 objects:
 1,132 fixed/349 free NGSF fits and 1,112 fixed/337 free SNID-SAGE fits. Other
 records remain visible as blocked or repeated. In particular, the downloaded
 Fritz records do not explicitly establish wavelength frames/units; their

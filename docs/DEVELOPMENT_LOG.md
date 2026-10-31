@@ -108,3 +108,39 @@ completed, while the first fine free-redshift search was still running. This is
 partial execution evidence, not measured classification accuracy. Paths, scope,
 launch/resume instructions and remaining viewer work are documented in
 `docs/RESULTS_VIEWER.md` and `docs/VALIDATION.md`.
+
+## 2026-10-31 — masked fits, ZTF review and overnight execution
+
+Added configurable observer-frame telluric windows and native fit-curve capture
+for NGSF and SNID-SAGE. NGSF masks the object and template samples in the fit's
+normal equations; SAGE uses native mask-aware preprocessing. Compatibility hooks
+stay inside the classifier subprocesses; external engine source and original
+spectra are unchanged. Expected host-line positions use supplied redshifts and
+are guides, not detections or automatic masks.
+
+Repaired 51 identical repeated rows in a derived copy of the Chen SN2018hti
+spectrum. All 78 Chen files now pass input validation. Added a retry-preparation
+script that preserves prior attempts and rejects conflicting duplicate samples.
+
+The user confirmed the atlas priority window, 2018-03-17 inclusive through
+2026-01-01 exclusive. The viewer defaults to ZTF objects in that window, shows
+catalogue sample membership and Fritz/TNS links, and provides fixed/free links
+for each engine. Green means the requested searches finished, including explicit
+no-good-match outcomes; red means unfinished. Review opens an epoch selector,
+top-ten native candidates and verified model overlays with telluric bands and
+expected host-line markers. Operational completion includes diagnostic modes;
+combined class support still uses primary modes only.
+
+Stopped the older unmasked batch cleanly and launched a fresh masked batch with
+both modes, since the changed protocol and missing free-z fits prevent reusing
+old fixed-only scores. It has 5,194 eligible fits, with 1,854 fits for 118 eligible
+ZTF-era objects first. The serial controller uses a frozen runtime, timeout and
+disk guards, and resumes verified finished attempts. The macOS launcher holds
+sleep assertions for the job lifetime; `pmset -g assertions` verified them.
+
+Validation: 104 tests passed, six bounded native engine runs saved 60 verified
+overlays, and desktop/mobile viewer checks passed. One SAGE run returned no good
+match. The full campaign is still running; no accuracy estimate follows from
+these checks. Added `docs/OVERNIGHT.md` and updated the roadmap and validation
+assessment. Scientific inputs, generated products and local configuration remain
+outside Git.

@@ -18,8 +18,8 @@ limitations. Probability calibration and remote CI remain unimplemented.
 | --- | --- | --- | --- |
 | P0 | Package, reproducible execution and dedicated development environment | Complete for the bounded v0.1 validation scope | None |
 | P1 | Measure classification quality against independent labels | Proposed; evaluation data required | P0 |
-| P2 | Local results website for campaign and object review | First viewer implemented; overlays and notes pending | P0; verified saved evidence |
-| P3 | Measured, bounded execution at campaign scale | Serial SLSN batch launched; measurements accumulating | P0; representative timing inputs |
+| P2 | Local results website for campaign and object review | Viewer and native fit overlays implemented; notes pending | P0; verified saved evidence |
+| P3 | Measured, bounded execution at campaign scale | ZTF-priority masked fixed/free batch running; serial execution | P0; representative timing inputs |
 | P4 | Improve and calibrate evidence combination | Deferred until benchmark exists | P1 |
 | P5 | Line/host-assisted redshift hypotheses | Deferred | P1; redshift-labelled validation set |
 | P6 | Reproducible release and verified GitHub badges | Later milestone | GitHub connection/authorization; release checks |
@@ -107,7 +107,9 @@ the Sample Atlas visual language and keeps core execution independent of web
 dependencies. Verified current-plan records supply scores; summaries and
 CSV exports are not trusted as classifier evidence. The first viewer covers
 counts, source/class/name filters, pagination, a review filter, object fits,
-and input spectra. More filters, native-score plots and overlays remain below.
+and input spectra. ZTF/date-window and sample filters, fixed/free status links,
+and saved native fit overlays are now implemented. Notes, native-score
+distribution plots and further filters remain below.
 
 - Completion/failure/blocked/no-match counts with correct denominators.
 - Search and filters by object, batch, class, engine, phase, instrument,
@@ -138,8 +140,8 @@ their provenance; never replace machine labels silently.
 
 Acceptance: navigable campaign → object → spectrum → match flow; consistent
 selection across plots/tables; keyboard-readable controls; gap/mask and axis-unit
-tests; notes survive restart and do not change an attempt hash. Notes and template
-overlays remain future work; the initial read-only viewer does not save notes.
+tests; notes survive restart and do not change an attempt hash. Native overlays
+are now saved during fitting for both engines. Notes remain future work.
 
 ## P3 — campaign scale and operational reliability
 

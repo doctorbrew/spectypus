@@ -80,8 +80,9 @@ spectypus review --output results/run1
 ```
 
 Open **http://127.0.0.1:8013** for progress, searchable objects, top matches and
-input spectra. Existing environments need `pip install -e '.[web]'` once.
-Template overlays are still planned.
+saved fit overlays. Existing environments need `pip install -e '.[web]'` once.
+Choose an object’s Review button or its Fixed-z/Free-z classifier links.
+[ZTF-priority overnight run and sleep protection](docs/OVERNIGHT.md).
 
 [Detailed usage & score semantics](docs/USAGE.md) ·
 [Examples](examples/) · [Validation](docs/VALIDATION.md) ·

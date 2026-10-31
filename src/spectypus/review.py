@@ -6,12 +6,29 @@ from datetime import datetime, timezone
 from pathlib import Path
 from threading import RLock
 import math
+import json
+import re
 import time
 
 from .aggregate import aggregate
 from .io import digest, read_json
 from .manifest import spectrum_data
+from .features import features
 from .pipeline import SCHEMA, current_record
+
+
+def fit_states(runs):
+    result = {}
+    for engine in ('ngsf', 'snid_sage'):
+        result[engine] = {}
+        for mode in ('fixed', 'free'):
+            rows = [r for r in runs if r['engine'] == engine and r['mode'] == mode and r['status'] != 'duplicate']
+            states = Counter(r['status'] for r in rows)
+            done = sum(states[s] for s in ('completed', 'no_good_match'))
+            status = ('no supplied z' if mode == 'fixed' and any(r.get('redshift') is None for r in runs) else 'not requested') if not rows else 'finished' if done == len(rows) else 'failed' if states['failed'] or states['invalid_evidence'] else 'blocked' if states['blocked'] else 'queued / active'
+            result[engine][mode] = {'status': status, 'finished': bool(rows) and done == len(rows),
+                                    'done': done, 'total': len(rows), 'no_good_match': states['no_good_match']}
+    return result
 
 
 def compact_record(record: dict, top_n: int) -> dict:
@@ -55,10 +72,22 @@ def read_snapshot(output: Path) -> dict:
     for run in runs:
         by_object[run["object_id"]].append(run)
     for obj in summary["objects"]:
+        obj['primary_complete'] = obj['complete']
+        obj['complete'] = all(r['status'] in {'completed', 'no_good_match', 'duplicate'}
+                              for r in by_object[obj['object_id']])
         obj["run_counts"] = dict(Counter(r["status"] for r in by_object[obj["object_id"]]))
         obj["batches"] = sorted({sources[s].get("batch", "") for s in obj["spectrum_ids"]} - {""})
         obj["needs_review"] = obj["status"] != "proposed" or not obj["complete"]
-    return {"plan": plan, "records": records, "runs": runs, "summary": summary,
+        meta = [sources[s] for s in obj['spectrum_ids']]
+        def items(value):
+            try: return json.loads(value or '[]') if isinstance(value, str) else value or []
+            except ValueError: return []
+        obj['samples'] = sorted({x for m in meta for x in items(m.get('samples'))})
+        obj['ztf_id'] = next((m.get('ztf_id') for m in meta if re.fullmatch(r'ZTF\d{2}[a-z]{7}', m.get('ztf_id', ''))), '')
+        obj['tns_name'] = next((m.get('tns_name') for m in meta if re.fullmatch(r'SN\d{4}[A-Za-z]+', m.get('tns_name', ''))), '')
+        obj['priority_ztf'] = any(m.get('priority_ztf') == 'true' for m in meta)
+        obj['fit_states'] = fit_states(by_object[obj['object_id']])
+    return {"output": output, "plan": plan, "records": records, "runs": runs, "summary": summary,
             "checked_at": datetime.now(timezone.utc).isoformat()}
 
 
@@ -73,8 +102,34 @@ def overview(snapshot: dict) -> dict:
             "classes": dict(Counter(o["proposed_class"] or "No suggestion" for o in summary["objects"])),
             "complete_objects": sum(o["complete"] for o in summary["objects"]),
             "batches": sorted({s.get("batch", "") for s in plan["spectra"]} - {""}),
+            "samples": sorted({x for o in summary['objects'] for x in o['samples']}),
+            "priority_window": {"start": plan['spectra'][0].get('priority_start'),
+                                "end": plan['spectra'][0].get('priority_end')},
             "note": "Automated suggestions for review. Scores are not classification probabilities.",
-            "model_curves": "Not available in this viewer; saved rankings and input spectra are shown."}
+            "model_curves": "Native saved fit curves when available; no fitting on page requests."}
+
+
+def fit_curve(snapshot, execution_id, rank=1):
+    run = next((r for r in snapshot['runs'] if r['execution_id'] == execution_id), None)
+    if run is None: raise KeyError(execution_id)
+    record = current_record(snapshot['output'], run)
+    if record is None: return {'available': False, 'reason': 'No verified saved fit'}
+    path = Path(record['attempt_path']) / 'fit_curves.json'
+    if 'fit_curves.json' not in record['artifacts']:
+        return {'available': False, 'reason': 'This attempt has no saved model curves'}
+    if rank > len(record['candidates']):
+        return {'available': False, 'reason': 'No candidate at this rank'}
+    candidate = record['candidates'][rank-1]
+    payload = read_json(path)
+    curve = next((c for c in payload['curves'] if c['template'] == candidate['template']
+                  and math.isclose(c['score'], candidate['score'], rel_tol=1e-5, abs_tol=1e-8)
+                  and (run['engine'] != 'ngsf' or c.get('galaxy') == candidate['native']['GALAXY'])), None)
+    if not curve or not curve.get('available'): return {'available': False, 'reason': 'Native model curve unavailable for this candidate'}
+    source = next(s for s in snapshot['plan']['spectra'] if s['spectrum_id'] == run['spectrum_id'])
+    points = curve['observed']
+    return {**{k: v for k, v in payload.items() if k != 'curves'}, **curve, 'rank': rank,
+            'execution_id': execution_id, 'features': features(source['redshift'], points[0][0], points[-1][0],
+                snapshot['plan']['config'].get('telluric_windows', []))}
 
 
 def object_detail(snapshot: dict, object_id: str) -> dict:
@@ -118,6 +173,8 @@ def observed_spectrum(snapshot: dict, spectrum_id: str) -> dict:
         return {"available": False, "reason": str(exc), "spectrum_id": spectrum_id}
     samples = [list(map(float, line.split())) for line in text.splitlines()]
     return {"available": True, "spectrum_id": spectrum_id, "points": samples,
+            "features": features(source["redshift"], samples[0][0], samples[-1][0],
+                                 snapshot["plan"]["config"].get("telluric_windows", [])),
             "wavelength_unit": "angstrom", "wavelength_frame": "observer",
             "flux_unit": "input units", "flux_treatment": staging["flux_treatment"],
             "source_sha256": staging["source_sha256"], "model_available": False}
@@ -156,9 +213,12 @@ def create_app(output: Path, *, cache_seconds: float = 30):
 
     @app.get("/api/objects")
     def objects(q: str = "", batch: str = "", label: str = "", review: bool = False,
+                ztf: bool = False, priority: bool = False, sample: str = '',
                 offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200)):
         rows = snapshot()["summary"]["objects"]
-        rows = [o for o in rows if q.casefold() in o["object_id"].casefold()
+        rows = [o for o in rows if q.casefold() in ' '.join([o['object_id'], o['ztf_id'], o['tns_name']]).casefold()
+                and (not ztf or o['ztf_id']) and (not priority or o['priority_ztf'])
+                and (not sample or sample in o['samples'])
                 and (not batch or batch in o["batches"])
                 and (not label or (o["proposed_class"] or "No suggestion") == label)
                 and (not review or o["needs_review"])]
@@ -177,5 +237,10 @@ def create_app(output: Path, *, cache_seconds: float = 30):
             return observed_spectrum(snapshot(), spectrum_id)
         except KeyError as exc:
             raise HTTPException(404, "Unknown spectrum") from exc
+
+    @app.get('/api/fit')
+    def fit(execution_id: str, rank: int = Query(1, ge=1, le=100)):
+        try: return fit_curve(snapshot(), execution_id, rank)
+        except KeyError as exc: raise HTTPException(404, 'Unknown fit') from exc
 
     return app

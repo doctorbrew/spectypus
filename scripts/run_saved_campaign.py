@@ -18,7 +18,11 @@ from spectypus.pipeline import make_plan, save_plan, execute_one, current_record
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("campaign", type=Path)
+    parser.add_argument("--prioritize-batch", default="")
+    parser.add_argument("--max-runs", type=int)
     args = parser.parse_args()
+    if args.max_runs is not None and args.max_runs < 1:
+        parser.error("--max-runs must be positive")
     root = args.campaign.resolve()
     output = root / "run"
     report = {"schema": "spectypus-campaign/1", "pid": os.getpid(), "status": "starting",
@@ -59,6 +63,11 @@ def main():
                 if run["execution_id"] not in seen:
                     queue.append(run)
                     seen.add(run["execution_id"])
+            if args.prioritize_batch:
+                queue.sort(key=lambda r: sources[r["spectrum_id"]].get("batch") != args.prioritize_batch)
+            # Date-window ZTF objects always precede the rest; within each group
+            # fixed redshifts finish before the more expensive free searches.
+            queue.sort(key=lambda r: (sources[r['spectrum_id']].get('priority_ztf') != 'true', r['mode'] != 'fixed'))
             checkpoint(status="running", plan_id=plan["plan_id"], eligible_runs=len(queue),
                        representative_runs=[r["execution_id"] for r in representatives])
             _summarize(plan, output)
@@ -78,6 +87,9 @@ def main():
                 checkpoint(active=None, runs=summary["run_counts"])
                 if failures_in_a_row >= 6:
                     raise RuntimeError("Stopped after six consecutive failures; inspect the saved logs")
+                if args.max_runs and report["completed_this_invocation"] >= args.max_runs:
+                    checkpoint(status="limited", active=None)
+                    return
             checkpoint(status="finished", active=None, runs=_summarize(plan, output)["run_counts"])
     except (Exception, KeyboardInterrupt) as exc:
         if acquired:

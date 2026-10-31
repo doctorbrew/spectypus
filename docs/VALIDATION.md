@@ -41,8 +41,8 @@ classification successes or a representative accuracy sample.
   memory claim has been measured.
 - `spectypus review` provides a local read-only results website: progress,
   suggested-class counts, searchable objects, top native matches, and input
-  spectra with verified source hashes. Template overlays and review notes
-  remain unavailable. The older project's separate review websites are not
+  spectra with verified source hashes. New runs can save native template overlays;
+  review notes remain unavailable. The older project's separate review websites are not
   part of this package.
 
 ## Dedicated-environment validation
@@ -97,6 +97,44 @@ for exact scope and the live local status paths.
 Validation products are in `results/slsn_20261031/`: `viewer-tests.xml`,
 `viewer-validation.json`, `viewer-preview.html`, `import.json`, `launcher.json`,
 `campaign_status.json`, and immutable attempt directories below `run/`.
+
+## Masked fits, native overlays and ZTF-priority rerun
+
+The updated implementation passed **104 tests** in the dedicated environment.
+Additional checks cover observer-frame masks, supplied-redshift host markers,
+NGSF object/template exclusion from its normal equations, derived input repair,
+engine/mode status buttons, catalogue filters, verified model-curve reads and
+completion that waits for diagnostic free-redshift runs. The synthetic NGSF
+check changes masked samples by a large amount and verifies unchanged fitted
+coefficients; conflicting duplicate wavelengths remain rejected.
+
+Six bounded native runs used two Chen spectra: SN2018avk at MJD 58,242 and the
+repaired SN2018hti spectrum dated 2018-12-31. Both engines ran at supplied z on
+both spectra, then both ran free-z on SN2018avk. Five produced accepted native
+candidate results; SAGE returned no good match for SN2018hti. All six saved ten
+overlays, including the rejected SAGE candidates, and all **60 overlays** passed
+the viewer's candidate/artifact identity checks. A saved overlay is not proof
+of a correct classification. The bounded free NGSF grid was 0.05–0.2 in steps
+of 0.05; the overnight grid remains 0–1 in steps of 0.01.
+
+Evidence is in `results/masking_validation_20261031/validation.json`, its fixed
+and `free/` attempt directories, and the desktop/mobile viewer previews. The
+JUnit report is `results/slsn_ztf_overnight_20261031/tests.xml`. JavaScript syntax
+and the saved review page were checked; plots show actual saved native arrays.
+
+The earlier unmasked batch was stopped cleanly and preserved. A new masked,
+fixed-plus-free batch contains 5,194 eligible attempts on 1,482 spectra, with
+1,854 attempts for 118 eligible ZTF-era objects first. The confirmed priority
+window is **2018-03-17 inclusive to 2026-01-01 exclusive**. Catalogue date
+proxies, with a name-year fallback, determine priority rather than scientific
+sample inclusion. All 78 Chen spectra pass input validation after removing 51
+identical rows from one derived copy; original files are unchanged. Inputs
+without declared wavelength frame/unit, including Fritz spectra, remain blocked.
+
+The new batch is running, not a completed accuracy or throughput experiment.
+macOS sleep assertions were verified for its controller. See
+[OVERNIGHT.md](OVERNIGHT.md) for the live status, exact protocol, viewing and
+resume commands. No environment or frozen runtime was changed after launch.
 
 ## Next falsifiable evaluation
 

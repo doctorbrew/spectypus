@@ -256,3 +256,13 @@ Deferred work: line/host-based redshift inference, spectrum reduction, FITS
 readers, classification calibration on held-out objects, treatment of correlated
 epochs and template-bank imbalance, and a review UI. No PyPI publication or
 GitHub push is performed by local installation.
+
+
+## Telluric masks, model curves and overnight priority
+
+Set `telluric_windows` to a list of observer-frame Angstrom `[lower, upper]`
+pairs, and `save_fit_curves: true` to retain native model curves for review.
+Both default to disabled for existing configurations. `redshift_mode: "both"`
+runs fixed and free fits for known-z targets, and free fits for unknown-z targets.
+Host-line markers use supplied redshifts and do not mask the lines. See
+[OVERNIGHT.md](OVERNIGHT.md) for the current protocol and restart instructions.
