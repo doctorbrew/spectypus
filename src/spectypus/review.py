@@ -80,7 +80,7 @@ def read_snapshot(output: Path) -> dict:
                               for r in by_object[obj['object_id']])
         obj["run_counts"] = dict(Counter(r["status"] for r in by_object[obj["object_id"]]))
         obj["batches"] = sorted({sources[s].get("batch", "") for s in obj["spectrum_ids"]} - {""})
-        obj["needs_review"] = obj["status"] != "proposed" or not obj["complete"]
+        obj["needs_review"] = obj["status"] != "proposed" or not obj["complete"] or obj['frame_review_required']
         meta = [sources[s] for s in obj['spectrum_ids']]
         def items(value):
             try: return json.loads(value or '[]') if isinstance(value, str) else value or []
@@ -166,7 +166,8 @@ def object_detail(snapshot: dict, object_id: str) -> dict:
         rows.append({**spectra[source["spectrum_id"]],
                      'phase_context': phase_context(source, snapshot.get('phase_references', {}).get(object_id, [])),
                      "metadata": {k: source.get(k) for k in ("batch", "mjd", "instrument", "redshift",
-                                  "redshift_source", "wavelength_frame", "wavelength_unit", "phase_rest_days")},
+                                  "redshift_source", "wavelength_frame", "wavelength_unit", "phase_rest_days",
+                                  "frame_assumed", "frame_source", "frame_review_flags")},
                      "fits": fits})
     return {"object": obj, "spectra": rows, "plan_id": snapshot["plan"]["plan_id"],
             "checked_at": snapshot["checked_at"]}

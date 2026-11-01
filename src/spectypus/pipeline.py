@@ -231,9 +231,9 @@ def _summarize(plan: dict, output: Path) -> dict:
               "run_status", "rank", "template", "template_epoch_id", "native_class", "native_subtype", "class_label",
               "phase_days", "redshift", "metric", "metric_direction", "score", "qualified", "native", "attempt_path"])
     write_csv(output / "objects.csv", summary["objects"], ["object_id", "status", "proposed_class", "complete", "spectrum_count",
-              "unique_spectrum_count", "duplicate_count", "contributing_spectra", "support_mass", "abstention_mass", "ranked_classes", "spectrum_ids"])
+              "unique_spectrum_count", "duplicate_count", "contributing_spectra", "support_mass", "abstention_mass", "ranked_classes", "spectrum_ids", "frame_assumed", "frame_review_required"])
     write_csv(output / "spectra.csv", summary["spectra"], ["object_id", "spectrum_id", "status", "proposed_class", "complete",
-              "duplicate_of", "expected_engines", "contributing_engines", "support_mass", "abstention_mass", "ranked_classes", "engine_evidence", "diagnostic_fits"])
+              "duplicate_of", "expected_engines", "contributing_engines", "support_mass", "abstention_mass", "ranked_classes", "engine_evidence", "diagnostic_fits", "frame_assumed", "frame_review_required"])
     return summary
 
 
