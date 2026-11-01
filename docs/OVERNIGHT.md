@@ -27,8 +27,8 @@ Counts exclude repeated spectra. Website completion includes diagnostic free
 fits; the combined class score still uses the primary mode only.
 
 Review opens the object's spectrum/epoch selector and saved model overlays.
-Engine/mode buttons open the same review filtered to that combination. Select
-ranks 1–10 independently. Curves are captured from the native classifier run;
+Engine/mode buttons open the same review filtered to that combination. A Python-generated top-ten collage precedes the scrollable individual matches;
+each has JPG and PDF download links. Curves are captured from the native classifier run;
 viewing does not refit. SAGE displays continuum-normalized residual flux; NGSF
 displays its native normalized SN+host model. The scales are not interchangeable.
 Missing or unverified curves are reported unavailable.
@@ -115,3 +115,58 @@ Both modes and masking change the protocol. Previous unmasked/fixed-only success
 remain archived but do not substitute for a new masked fit or a missing free-z
 fit. Thus the new batch includes the full archive, including every unfinished or
 no-good-match spectrum, rather than mixing incompatible scores.
+
+
+## Python figure exports and phase references
+
+The viewer now displays Matplotlib figures, using the bundled house `plot_style`
+helper, SciencePlots, Hiroshige colours, inward ticks and mandatory LaTeX. Each
+figure is saved as a vector PDF plus a 300-dpi JPG under `run/review_figures/`.
+The top-ten collage and individual matches are generated on first review and
+cached. One plotting subprocess runs at a time; no classifier is re-run. The
+first view can take about a minute. Use Refresh results to reload the selected
+spectrum after new fits finish; automatic count updates preserve gallery scroll.
+
+For a fresh installation, install `pip install -e '.[web,plots]'` and a working
+TeX installation providing `latex`, `dvipng`, `type1cm` and `cm-super`. During the
+active campaign, do not modify the classifier environment. This checkout uses
+`.venv-plots` with access to the existing scientific packages and separate
+SciencePlots/pypalettes installations. `SPECTYPUS_PLOT_PYTHON` can select another
+plotting interpreter. Missing plotting dependencies produce an explicit error;
+there is no alternate browser-plot or non-LaTeX fallback.
+
+Flux limits are `1.25 * min(smoothed observed flux)` through
+`1.25 * max(smoothed observed flux)`. A quadratic Savitzky–Golay filter spans at
+most 25 observer-frame Angstrom on a uniform grid within each contiguous usable
+segment. Masked samples, missing values and large wavelength gaps are not bridged.
+Short/coarse segments that cannot support the filter keep their original samples.
+Smoothing affects limits only: plotted data, native models, scores and fitting
+remain unchanged. Captions count observed samples outside the displayed range.
+A constant range receives a small explicit padding to keep axes nondegenerate.
+Positive minima can be clipped by the requested multiplicative lower bound.
+
+Every match names the template SN, its native phase, score and fit redshift. Target
+phase references are separate: catalogue maximum (with band) or discovery, plus
+source, reference MJD, observer days and rest-frame days when z is known. Rest
+phase is `(spectrum MJD - reference MJD)/(1+z)`, using the supplied catalogue z.
+Different bands can peak on different dates; conflicting dates within the same
+reference type/band are retained and flagged, not averaged. Template phases retain
+the native library reference and are not assumed to use the target's reference.
+No dates are inferred from a template match or a filename, and discovery is not
+explosion time. Existing local catalogue dates are used; this step does not query
+live Fritz/TNS or fit light curves to determine new maxima.
+
+The current `review_metadata.json` has references for 333 of 344 catalogue objects.
+It records exact-alias joins and source file hashes without changing the frozen
+classification plan. To prepare this optional sidecar for a new run:
+
+```bash
+python scripts/prepare_review_metadata.py --output results/YOUR_BATCH/run \
+  --source-root /path/to/_ProjectG_VolumetricRatesSLSNe
+```
+
+Status buttons now separate finished, queued/active, blocked and failed counts.
+For SN2018avk, NGSF fixed-z has four finished and ten blocked requests: nine lack
+an explicit wavelength frame and one lacks a supported wavelength unit. These
+are ingestion blocks, not ten rejected classifier matches. Hover over a button
+or inspect the relevant epoch to see the reasons.

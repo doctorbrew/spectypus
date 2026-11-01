@@ -14,6 +14,7 @@ from .aggregate import aggregate
 from .io import digest, read_json
 from .manifest import spectrum_data
 from .features import features
+from .phases import phase_context
 from .pipeline import SCHEMA, current_record
 
 
@@ -27,7 +28,9 @@ def fit_states(runs):
             done = sum(states[s] for s in ('completed', 'no_good_match'))
             status = ('no supplied z' if mode == 'fixed' and any(r.get('redshift') is None for r in runs) else 'not requested') if not rows else 'finished' if done == len(rows) else 'failed' if states['failed'] or states['invalid_evidence'] else 'blocked' if states['blocked'] else 'queued / active'
             result[engine][mode] = {'status': status, 'finished': bool(rows) and done == len(rows),
-                                    'done': done, 'total': len(rows), 'no_good_match': states['no_good_match']}
+                                    'done': done, 'total': len(rows), 'no_good_match': states['no_good_match'],
+                                    'counts': dict(states),
+                                    'blocked_reasons': dict(Counter(r.get('reason', '') for r in rows if r['status'] == 'blocked'))}
     return result
 
 
@@ -87,7 +90,15 @@ def read_snapshot(output: Path) -> dict:
         obj['tns_name'] = next((m.get('tns_name') for m in meta if re.fullmatch(r'SN\d{4}[A-Za-z]+', m.get('tns_name', ''))), '')
         obj['priority_ztf'] = any(m.get('priority_ztf') == 'true' for m in meta)
         obj['fit_states'] = fit_states(by_object[obj['object_id']])
+    phase_refs = {}
+    metadata_path = output / 'review_metadata.json'
+    if metadata_path.exists():
+        metadata = read_json(metadata_path)
+        if metadata.get('plan_id') != plan['plan_id']:
+            raise ValueError('Review phase metadata belongs to a different plan')
+        phase_refs = metadata.get('objects', {})
     return {"output": output, "plan": plan, "records": records, "runs": runs, "summary": summary,
+            'phase_references': phase_refs,
             "checked_at": datetime.now(timezone.utc).isoformat()}
 
 
@@ -128,6 +139,7 @@ def fit_curve(snapshot, execution_id, rank=1):
     source = next(s for s in snapshot['plan']['spectra'] if s['spectrum_id'] == run['spectrum_id'])
     points = curve['observed']
     return {**{k: v for k, v in payload.items() if k != 'curves'}, **curve, 'rank': rank,
+            'candidate': {k: candidate.get(k) for k in ('template', 'phase_days', 'native_class', 'metric', 'score', 'redshift', 'qualified')},
             'execution_id': execution_id, 'features': features(source['redshift'], points[0][0], points[-1][0],
                 snapshot['plan']['config'].get('telluric_windows', []))}
 
@@ -152,6 +164,7 @@ def object_detail(snapshot: dict, object_id: str) -> dict:
                        for m in (record["candidates"][:snapshot["plan"]["config"]["top_n"]] if record else [])]
             fits.append({**run, "matches": matches})
         rows.append({**spectra[source["spectrum_id"]],
+                     'phase_context': phase_context(source, snapshot.get('phase_references', {}).get(object_id, [])),
                      "metadata": {k: source.get(k) for k in ("batch", "mjd", "instrument", "redshift",
                                   "redshift_source", "wavelength_frame", "wavelength_unit", "phase_rest_days")},
                      "fits": fits})
@@ -191,6 +204,8 @@ def create_app(output: Path, *, cache_seconds: float = 30):
     app = FastAPI(title="Spectypus results", docs_url=None, redoc_url=None, openapi_url=None)
     app.mount("/static", StaticFiles(directory=static), name="static")
     cached, lock = {}, RLock()
+    from .gallery import Galleries
+    galleries = Galleries(output)
 
     def snapshot(refresh=False):
         with lock:
@@ -242,5 +257,21 @@ def create_app(output: Path, *, cache_seconds: float = 30):
     def fit(execution_id: str, rank: int = Query(1, ge=1, le=100)):
         try: return fit_curve(snapshot(), execution_id, rank)
         except KeyError as exc: raise HTTPException(404, 'Unknown fit') from exc
+
+    @app.get('/api/gallery')
+    def gallery(execution_id: str):
+        try: return galleries.request(snapshot(), execution_id)
+        except KeyError as exc: raise HTTPException(404, 'Unknown fit') from exc
+
+    @app.get('/api/figure/{key}/{filename}')
+    def figure(key: str, filename: str):
+        if not re.fullmatch(r'[a-f0-9]{64}', key): raise HTTPException(404)
+        folder = galleries.root / key
+        index = folder / 'gallery.json'
+        if not index.exists(): raise HTTPException(404)
+        info = read_json(index)
+        allowed = {item[ext] for item in [info['collage']] + info['plots'] for ext in ('jpg', 'pdf')}
+        if filename not in allowed: raise HTTPException(404)
+        return FileResponse(folder / filename)
 
     return app

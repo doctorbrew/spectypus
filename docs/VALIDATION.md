@@ -143,3 +143,15 @@ owns the evaluation protocol and implementation tasks. It requires independent
 labels, object-disjoint splits, an explicit template-leakage policy, per-class
 precision/recall and confusion, coverage/abstention, and failure denominators.
 Until that experiment is performed, no accuracy percentage is defensible.
+
+
+## Python plot galleries (2026-11-01)
+
+110 tests pass, including gap-aware 25-Angstrom smoothing for display limits,
+unchanged input curves, explicit coarse/missing-segment behavior, phase time-system
+conversion, observer/rest-frame distinctions, conflicting reference dates and the
+4-finished/10-blocked status breakdown. NGSF and SAGE saved curves for SN2018avk
+were exported as ten individual PDF/JPG pairs and one collage pair per engine.
+The JPGs use 300 dpi; PDF curves are vector. Figures were visually inspected.
+Evidence is in `results/python_figures_20261101/` and the current campaign's
+`run/review_figures/`. This validates plotting, not classification accuracy.

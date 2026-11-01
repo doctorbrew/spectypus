@@ -18,7 +18,7 @@ limitations. Probability calibration and remote CI remain unimplemented.
 | --- | --- | --- | --- |
 | P0 | Package, reproducible execution and dedicated development environment | Complete for the bounded v0.1 validation scope | None |
 | P1 | Measure classification quality against independent labels | Proposed; evaluation data required | P0 |
-| P2 | Local results website for campaign and object review | Viewer and native fit overlays implemented; notes pending | P0; verified saved evidence |
+| P2 | Local results website for campaign and object review | Viewer, Python galleries and catalogue phases implemented; notes pending | P0; verified saved evidence |
 | P3 | Measured, bounded execution at campaign scale | ZTF-priority masked fixed/free batch running; serial execution | P0; representative timing inputs |
 | P4 | Improve and calibrate evidence combination | Deferred until benchmark exists | P1 |
 | P5 | Line/host-assisted redshift hypotheses | Deferred | P1; redshift-labelled validation set |

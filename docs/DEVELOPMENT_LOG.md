@@ -144,3 +144,27 @@ match. The full campaign is still running; no accuracy estimate follows from
 these checks. Added `docs/OVERNIGHT.md` and updated the roadmap and validation
 assessment. Scientific inputs, generated products and local configuration remain
 outside Git.
+
+
+## 2026-11-01 — Python fit galleries, explicit phases and brighter logo
+
+Replaced browser SVG fitting plots with cached Matplotlib/LaTeX exports using the
+canonical bundled plot-style helper. Each reviewed engine/mode has a top-ten
+collage and scrollable individual matches, with vector PDF and 300-dpi JPG pairs.
+A gap-aware 25-Angstrom Savitzky–Golay filter determines the requested 1.25-times
+extrema limits only; native spectra, scores and model curves remain unchanged.
+Template names/phases and target catalogue phases are labelled separately.
+
+Prepared a review-only phase sidecar from exact-alias local catalogues: 333/344
+objects have references. Discovery and band-specific maxima remain separate;
+conflicting dates are shown with provenance. No live catalogue query or new
+light-curve fit was performed. The running campaign's frozen inputs, runtime and
+classifier environment are unchanged; plotting uses an isolated environment.
+
+Expanded fit-button counts and reasons. The reported SN2018avk 4/14 state is four
+finished plus ten ingestion blocks (nine unknown frames, one unknown unit), not
+four failures. Brightened the transparent logo's navy lettering and outlines
+using the built-in image tool and removed its white website backing.
+
+Validation: 110 tests passed; real NGSF and SAGE galleries exported and inspected.
+The earlier HTTPX deprecation warning remains unrelated to plot correctness.
