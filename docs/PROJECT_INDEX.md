@@ -11,6 +11,7 @@ This file routes readers to the owner of each topic; it is not a history log.
 | Package/runtime dependencies | [pyproject.toml](../pyproject.toml) | Changing installation requirements |
 | Verified behavior and scientific limitations | [VALIDATION.md](VALIDATION.md) | Assessing how well the pipeline works |
 | ZTF priority, masking, fit overlays and overnight launch | [OVERNIGHT.md](OVERNIGHT.md) | Running or reviewing the current masked campaign |
+| Provisional Fritz batch and frame assumptions | [FRITZ_BATCH.md](FRITZ_BATCH.md) | Running or reviewing the supplementary Fritz fits |
 | Results website, local SLSN campaign and progress | [RESULTS_VIEWER.md](RESULTS_VIEWER.md) | Opening saved results or checking the full batch |
 | Website, scale, evaluation and release tasks | [SPECTYPUS_ROADMAP.md](roadmap/SPECTYPUS_ROADMAP.md) | Choosing the next implementation task |
 | Consequential development history | [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) | Understanding what changed and why |

@@ -1,5 +1,9 @@
 # ZTF-priority overnight classification
 
+**Fritz update:** a separate [provisional Fritz batch](FRITZ_BATCH.md) now runs
+under the user-declared observer-frame assumption. The original batch below
+continues unchanged.
+
 The current batch is `results/slsn_ztf_overnight_20261031/`. It was launched in the
 `spectypus` environment with sleep protection. The earlier unmasked batch was
 stopped cleanly and retained; `selection.json` records the relationship.

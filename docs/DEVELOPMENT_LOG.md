@@ -188,3 +188,26 @@ observer-frame confirmation before preparing a supplementary Fritz run; no
 unknown frame was silently reinterpreted and the running plan was not changed.
 
 Validation: 114 tests passed, including an in-memory layout check with image export disabled. No galleries were regenerated.
+
+
+## 2026-11-01 — provisional observer-frame Fritz batch
+
+The user clarified that Fritz spectra are almost always observer-frame, with a
+possible small fraction in rest frame. Recorded this as an assumption, not a
+verification or numerical probability. Added a preparation script that checks
+saved metadata hashes, blocks explicit frame/unit contradictions, and extracts
+only complete finite JSON arrays into derived ASCII. No source files or missing
+samples are altered. Camera frame numbers are not spectral-frame evidence.
+
+Added persistent assumption/review flags to spectrum/object summaries and CSVs;
+the viewer keeps completed conditional results in review. Prepared and launched
+`results/fritz_assumed_observer_20261101` with 2,851 eligible fixed/free attempts
+across NGSF and SNID-SAGE. One original nm header, nonfinite/missing arrays and
+duplicate wavelength inputs remain blocked. The older Chen/Gómez campaign is
+unchanged and still running. Two bounded native fits succeeded and were reused
+by verified execution identity. No Python galleries were rendered.
+
+Validation: 123 tests passed, covering contradiction checks, safe JSON extraction,
+assumption persistence through aggregation/CSV and the review flag after successful
+fits. The run uses a frozen runtime and caffeinate; each campaign has one worker.
+See `docs/FRITZ_BATCH.md` for scope, provenance, exclusions and resume commands.

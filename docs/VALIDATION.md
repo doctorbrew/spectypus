@@ -167,3 +167,15 @@ inspected in memory with export disabled; no saved galleries were regenerated.
 An initial SciPy native median-filter path crashed in this environment; the
 three-sample median guard now uses explicit NumPy neighbours instead. The full
 suite passes without changing the running classifier environment.
+
+
+## Provisional Fritz execution (2026-11-01)
+
+123 tests pass. Assumption-specific tests cover original unit conflicts, explicit
+rest-frame indicators, avoiding false positives from camera frame numbers, lossless
+finite JSON-array extraction, refusing missing samples, and keeping frame-review
+flags after successful classification. One Fritz spectrum completed in both native
+engines; exact execution IDs and saved artifacts were verified before reuse in the
+full batch. Results are conditional on the observer-frame assumption. Neither
+these tests nor fixed/free agreement establishes an individual spectrum's frame.
+See [FRITZ_BATCH.md](FRITZ_BATCH.md) and local `preflight.json` for the run scope.

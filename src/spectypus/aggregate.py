@@ -77,7 +77,11 @@ def aggregate(plan: dict, records: dict[str, dict]) -> dict:
                         "diagnostic_fits": diagnostics, "numeric_sha256": source.get("staging", {}).get("numeric_sha256"),
                         **assessment(dict(support), complete)})
     by_object = defaultdict(list)
+    sources = {s['spectrum_id']: s for s in plan['spectra']}
     for spectrum in spectra:
+        source = sources[spectrum['spectrum_id']]
+        spectrum['frame_assumed'] = source.get('frame_assumed') in (True, 'true')
+        spectrum['frame_review_required'] = source.get('frame_review_required') in (True, 'true')
         by_object[spectrum["object_id"]].append(spectrum)
     objects = []
     for object_id, rows in sorted(by_object.items()):
@@ -87,6 +91,8 @@ def aggregate(plan: dict, records: dict[str, dict]) -> dict:
             for candidate in row["ranked_classes"]:
                 support[candidate["class_label"]] += candidate["support"] / len(unique)
         objects.append({"object_id": object_id, "spectrum_count": len(rows),
+                        'frame_assumed': any(r['frame_assumed'] for r in rows),
+                        'frame_review_required': any(r['frame_review_required'] for r in rows),
                         "unique_spectrum_count": len(unique), "duplicate_count": len(rows) - len(unique),
                         "contributing_spectra": sum(bool(r["ranked_classes"]) for r in unique),
                         "spectrum_ids": [r["spectrum_id"] for r in rows],
