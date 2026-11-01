@@ -3,19 +3,20 @@ from pathlib import Path
 import json
 import math
 import re
-import textwrap
 from .io import write_json
 
 
-def display_limits(points, windows=(), width=25.):
-    """SG polynomial order 2 on contiguous, uniformly resampled wavelength segments.
+def display_limits(points, windows=(), width=50.):
+    """Display-only SG smoothing in Angstrom; never alters plotted/native arrays.
 
-    Resampling/smoothing is used ONLY to determine limits. Never bridge a mask,
-    missing sample or a wavelength gap >3 median spacings. Coarse/short segments
-    that cannot support three points in 25 Angstrom retain their original flux.
+    Exclude isolated spikes using a three-point median/MAD check before SG,
+    and exclude filter-edge and unsupported short/coarse segments from extrema.
+    No interpolation across telluric masks, NaNs or large wavelength gaps.
     """
     import numpy as np
     from scipy.signal import savgol_filter
+    if not math.isfinite(width) or not 25 <= width <= 50:
+        raise ValueError('Display smoothing width must be 25–50 Angstrom')
     data = np.asarray(points, dtype=float)
     x, y = data[:, 0], data[:, 1]
     valid = np.isfinite(x) & np.isfinite(y)
@@ -24,27 +25,67 @@ def display_limits(points, windows=(), width=25.):
     if np.any(steps <= 0): raise ValueError('Plot wavelengths must increase strictly')
     spacing = np.median(steps) if len(steps) else width
     cuts = np.flatnonzero((~valid[1:]) | (~valid[:-1]) | (steps > 3 * spacing)) + 1
-    smoothed, unchanged = [], 0
+    smoothed, excluded, spikes = [], 0, 0
     for ids in np.split(np.arange(len(x)), cuts):
         ids = ids[valid[ids]]
         if not len(ids): continue
         if len(ids) < 3:
-            smoothed.extend(y[ids]); unchanged += 1; continue
+            excluded += len(ids); continue
         grid = np.linspace(x[ids[0]], x[ids[-1]], len(ids))
         dx = grid[1] - grid[0]
         n = min(len(ids), int(math.floor(width / dx)) + 1)
         if n % 2 == 0: n -= 1
         if n < 3:
-            smoothed.extend(y[ids]); unchanged += 1; continue
-        smoothed.extend(savgol_filter(np.interp(grid, x[ids], y[ids]), n, 2, mode='interp'))
-    if not smoothed: raise ValueError('No usable spectrum samples for axis limits')
-    lo, hi = 1.25 * float(np.min(smoothed)), 1.25 * float(np.max(smoothed))
+            excluded += len(ids); continue
+        values = np.interp(grid, x[ids], y[ids])
+        left = np.r_[values[1], values[:-1]]
+        right = np.r_[values[1:], values[-2]]
+        local = np.median(np.stack([left, values, right]), axis=0)
+        residual = values - local
+        scale = 1.4826 * np.median(np.abs(residual - np.median(residual)))
+        floor = np.finfo(float).eps * max(1., float(np.max(np.abs(values)))) * 100
+        bad = np.abs(residual) > 6 * max(scale, floor)
+        # Limit suppression to isolated one/two-bin excursions; preserve broad features.
+        for group in np.split(np.flatnonzero(bad), np.flatnonzero(np.diff(np.flatnonzero(bad)) > 1) + 1):
+            if len(group) <= 2:
+                values[group] = local[group]; spikes += len(group)
+        # A quadratic through three samples is the identity, not smoothing.
+        order = min(2, n - 2)
+        smooth = savgol_filter(values, n, order, mode='mirror')
+        half = n // 2
+        smoothed.extend(smooth[half:-half])
+        excluded += 2 * half
+    if not smoothed: raise ValueError('Insufficient wavelength support for 25–50 Angstrom smoothing; no raw-spike limit fallback')
+    minimum, maximum = float(np.min(smoothed)), float(np.max(smoothed))
+    # Stretch away from zero on both sides; positive minima move downward.
+    lo = minimum * 1.1 if minimum < 0 else minimum / 1.1
+    hi = maximum * 1.1 if maximum > 0 else maximum / 1.1
     degenerate = lo == hi
     if degenerate:
         pad = max(abs(lo) * .05, 1e-6); lo -= pad; hi += pad
-    return [lo, hi], {'savgol_width_angstrom': width, 'polynomial_order': 2,
-                     'unsmoothed_segments': unchanged, 'constant_range_padded': degenerate,
+    return [lo, hi], {'savgol_width_angstrom': width, 'max_polynomial_order': 2,
+                     'isolated_spikes_replaced_for_limits': spikes,
+                     'edge_or_unsupported_samples_excluded_from_limits': excluded,
+                     'stretch_factor': 1.1, 'constant_range_padded': degenerate,
                      'observed_samples_outside_limits': int(np.sum(valid & ((y < lo) | (y > hi))))}
+
+
+def figure_title(object_name, context, engine, mode):
+    name = {'ngsf': 'NGSF', 'snid_sage': 'SNID-SAGE'}.get(engine, engine)
+    mjd = context.get('mjd')
+    mjd = 'unknown' if mjd is None else f'{mjd:.2f}'.rstrip('0').rstrip('.')
+    title = f'{object_name} - MJD {mjd} - {name} ({"Fixed" if mode == "fixed" else "Free"}-z)'
+    if mode == 'fixed':
+        z = context.get('redshift')
+        title += f' (z={z:g})' if z is not None else ' (z=unknown)'
+    return title
+
+
+def match_label(candidate):
+    matched = re.search(r'(?:sn)?((?:19|20)\d{2}[A-Za-z]+)', candidate['template'], re.I)
+    name = 'SN' + matched.group(1) if matched else candidate['template'].split('/')[1] if '/' in candidate['template'] else candidate['template']
+    phase = candidate['phase_days']
+    return f'{name} : {phase:+.1f} d' if phase is not None else f'{name} : phase unknown'
 
 
 def tex(value):
@@ -81,7 +122,6 @@ def render(request_path, directory):
     directory = Path(directory); directory.mkdir(parents=True, exist_ok=True)
     curves = request['curves']; source = request['source']
     context = request['phase_context']
-    phase_text = phase_lines(context)
     object_name = source['object_id']
     safe = re.sub(r'[^A-Za-z0-9_-]', '_', object_name)
     engine = request['engine']; mode = request['mode']
@@ -98,32 +138,22 @@ def render(request_path, directory):
         for line in curve['features']['host_lines']:
             ax.axvline(line['observed_angstrom'], color='xkcd:rose', lw=.6, ls=':', alpha=.7)
         ax.set_xlim(obs[0, 0], obs[-1, 0]); ax.set_ylim(*limits)
-        set_plotparams(ax, xticks=(1000, 200), yticks=None)
+        set_plotparams(ax, xticks=(1000, 200), yticks=None, tick_fs=27)
         ax.set_xlabel(r'Observer wavelength (\AA)')
         ax.set_ylabel('Normalized flux' if engine == 'ngsf' else 'Continuum residual flux')
         candidate = curve['candidate']
-        phase = candidate['phase_days']
-        phase = 'unknown' if phase is None else f'{phase:+.1f} d'
-        matched = re.search(r'(?:sn)?((?:19|20)\d{2}[A-Za-z]+)', candidate['template'], re.I)
-        name = 'SN' + matched.group(1) if matched else candidate['template'].split('/')[1] if '/' in candidate['template'] else candidate['template']
-        ax.set_title(tex(f"#{curve['rank']} {name} | template phase {phase}"), pad=14)
+        ax.text(.97, .95, tex(match_label(candidate)), transform=ax.transAxes,
+                ha='right', va='top', fontsize=20,
+                bbox=dict(boxstyle='round,pad=.4', facecolor='white', edgecolor='0.7', alpha=.9))
         if not compact:
-            styled_legend(ax, loc='upper center', bbox_to_anchor=(.5, 1.02), ncol=2)
+            styled_legend(ax, loc='lower right')
         return candidate
-    stamp = f'{object_name} | {engine} {mode}-z | observed MJD {context.get("mjd")} | supplied z {context.get("redshift")}'
-    notes = '25 Angstrom SG smoothing sets limits only; curves unchanged. Gold: telluric masks; pink: expected host lines.'
-    notes += f' {limits_info["observed_samples_outside_limits"]} spectrum samples outside displayed y limits.'
-    if limits_info['unsmoothed_segments']: notes += f' {limits_info["unsmoothed_segments"]} short/coarse segments unsmoothed.'
-    notes += ' Template phases retain the native library reference; do not assume they share the target reference.'
+    stamp = figure_title(object_name, context, engine, mode)
     for curve in curves:
         fig, ax = plt.subplots(figsize=(14, 8))
         candidate = panel(ax, curve)
-        fig.suptitle(tex(stamp), fontsize=18)
-        detail = [f"Template: {candidate['template']}",
-                  f"{candidate['native_class']} | {candidate['metric']} = {candidate['score']:.4g} | fit z = {candidate['redshift']} | {'accepted candidate' if candidate.get('qualified') else 'candidate not accepted'}"]
-        footer = '\n'.join(textwrap.fill(line, 125) for line in phase_text + detail + [notes])
-        fig.text(.1, -.02, tex(footer), ha='left', va='top', fontsize=12)
-        fig.subplots_adjust(top=.82, bottom=.16, left=.1, right=.97)
+        ax.set_title(tex(stamp), fontsize=20, pad=18)
+        fig.subplots_adjust(top=.88, bottom=.16, left=.12, right=.97)
         stem = f'FitSpectrum_{safe}_{engine}_{mode}_rank{curve["rank"]:02d}'
         savefig_light(fig, directory / stem); plt.close(fig)
         exports.append({'rank': curve['rank'], 'jpg': stem + '.jpg', 'pdf': stem + '.pdf'})
@@ -131,10 +161,9 @@ def render(request_path, directory):
     fig, axes = plt.subplots(rows, cols, figsize=(22, 5.2 * rows), squeeze=False)
     for ax, curve in zip(axes.flat, curves): panel(ax, curve, compact=True)
     for ax in list(axes.flat)[len(curves):]: ax.set_visible(False)
-    fig.suptitle(tex(stamp + '\nTop saved matches'), fontsize=22, y=1.01)
+    fig.suptitle(tex(stamp), fontsize=22, y=1.01)
     fig.legend(*axes[0, 0].get_legend_handles_labels(), loc='upper center', bbox_to_anchor=(.5, .985), ncol=2)
     fig.tight_layout(h_pad=2.5, w_pad=2)
-    fig.text(.04, -.01, tex('\n'.join(phase_text + [textwrap.fill(notes, 160)])), fontsize=14, va='top')
     stem = f'FitSpectrum_{safe}_{engine}_{mode}_top10'
     savefig_light(fig, directory / stem); plt.close(fig)
     write_json(directory / 'gallery.json', {'status': 'ready', 'collage': {'jpg': stem+'.jpg', 'pdf': stem+'.pdf'},
