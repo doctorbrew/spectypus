@@ -155,3 +155,15 @@ were exported as ten individual PDF/JPG pairs and one collage pair per engine.
 The JPGs use 300 dpi; PDF curves are vector. Figures were visually inspected.
 Evidence is in `results/python_figures_20261101/` and the current campaign's
 `run/review_figures/`. This validates plotting, not classification accuracy.
+
+
+## Revised limit calculation (2026-11-01)
+
+114 tests pass in the plotting environment. New checks cover isolated-spike
+amplitude invariance, preservation of broad features, mask/gap separation,
+coarse three-point smoothing, filter-edge exclusion, the exact title and match
+label formats, 27-point ticks and removal of all figure footer text. Layout was
+inspected in memory with export disabled; no saved galleries were regenerated.
+An initial SciPy native median-filter path crashed in this environment; the
+three-sample median guard now uses explicit NumPy neighbours instead. The full
+suite passes without changing the running classifier environment.

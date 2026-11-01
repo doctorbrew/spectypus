@@ -168,3 +168,23 @@ using the built-in image tool and removed its white website backing.
 
 Validation: 110 tests passed; real NGSF and SAGE galleries exported and inspected.
 The earlier HTTPX deprecation warning remains unrelated to plot correctness.
+
+
+## 2026-11-01 — revise plot limits and labels; retain fitting priority
+
+Changed display-only limit calculation to 50-Angstrom SG smoothing with a
+three-bin median/MAD isolated-spike guard and 1.1× outward scaling. Removed raw
+short-segment and filter-edge extrema, and avoided the three-point quadratic
+identity. Native data/models/fits are unchanged. Matched SN/phase moves inside
+the axes; titles follow the requested fixed/free format, all footer text is
+removed and tick labels increase from 18 to 27 points. Existing galleries were
+not regenerated; tests inspect figure structure with image export disabled.
+
+Confirmed the existing controller is running both engines for eligible Chen
+and Gómez inputs; the priority flag does not restrict the selected source.
+Audited all 1,114 saved Fritz records and the upstream SkyPortal schema: API
+wavelength units are Angstrom, but no frame declaration was found. Asked for
+observer-frame confirmation before preparing a supplementary Fritz run; no
+unknown frame was silently reinterpreted and the running plan was not changed.
+
+Validation: 114 tests passed, including an in-memory layout check with image export disabled. No galleries were regenerated.
