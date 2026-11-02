@@ -19,7 +19,7 @@ limitations. Probability calibration and remote CI remain unimplemented.
 | P0 | Package, reproducible execution and dedicated development environment | Complete for the bounded v0.1 validation scope | None |
 | P1 | Measure classification quality against independent labels | Proposed; evaluation data required | P0 |
 | P2 | Local results website for campaign and object review | Viewer, Python galleries and catalogue phases implemented; notes pending | P0; verified saved evidence |
-| P3 | Measured, bounded execution at campaign scale | ZTF-priority masked fixed/free batch running; serial execution | P0; representative timing inputs |
+| P3 | Measured, bounded execution at campaign scale | Bounded process workers validated on eight native fits; both campaigns resumed with two workers each | P0; representative timing inputs |
 | P4 | Improve and calibrate evidence combination | Deferred until benchmark exists | P1 |
 | P5 | Line/host-assisted redshift hypotheses | Deferred | P1; redshift-labelled validation set |
 | P6 | Reproducible release and verified GitHub badges | Later milestone | GitHub connection/authorization; release checks |
@@ -150,13 +150,14 @@ searches. Record wall time, memory, bank size, candidate counts and failures
 with hardware/runtime/grid provenance. Tiny smoke timings do not extrapolate
 to thousands of spectra or fine free-redshift grids.
 
-Then implement bounded workers, cancellation/checkpointing, incremental current
-views and a resource-aware queue. Preserve private attempt workspaces and a
-single authoritative writer for shared indices. Cache provenance safely to
+Bounded process workers, cancellation/checkpointing, incremental status counts,
+explicit active fits and periodic verified exports are implemented in the saved
+campaign controller. Private attempt workspaces and a single authoritative
+writer for shared indices preserve the frozen scientific plan on resume.
+Further work: dynamic resource-aware scheduling and safe provenance caching to
 avoid repeatedly scanning an unchanged bank while still detecting changes.
-Expose active/running and retrying attempts explicitly for live progress;
-current summaries only show saved terminal evidence or pending work and can
-retain a previous failure while its replacement attempt is running.
+`active_runs` exposes all concurrent attempts in campaign status; the viewer's
+saved-result summaries can still retain a previous failure during a retry.
 Add an actual native-import preflight to readiness diagnostics and record
 native build identities beyond Python package versions: the environment setup
 demonstrated that a version-consistent SciPy installation can still fail to load.

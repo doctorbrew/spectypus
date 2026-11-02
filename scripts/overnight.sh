@@ -14,8 +14,11 @@ export PYTHONPATH="$runtime"
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 export VECLIB_MAXIMUM_THREADS=1 NUMEXPR_NUM_THREADS=1 PYTHONUNBUFFERED=1
 runner_python="${SPECTYPUS_PYTHON:-python}"
+# Scheduling is separate from the frozen scientific package. The controller
+# snapshots itself per invocation and refuses to change an existing plan ID.
+controller="$project_root/scripts/run_saved_campaign.py"
 if [ "$(uname -s)" = Darwin ]; then
-  exec /usr/bin/caffeinate -ims "$runner_python" "$runtime/run_saved_campaign.py" "$campaign" "$@"
+  exec /usr/bin/caffeinate -ims "$runner_python" "$controller" "$campaign" "$@"
 else
-  exec "$runner_python" "$runtime/run_saved_campaign.py" "$campaign" "$@"
+  exec "$runner_python" "$controller" "$campaign" "$@"
 fi

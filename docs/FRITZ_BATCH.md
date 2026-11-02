@@ -40,8 +40,9 @@ for reuse. This establishes integration, not the correctness of the frame assump
 
 ## Run or resume
 
-This is a separate campaign alongside the existing Chen/Gómez queue, with one
-worker each (two classification workers in total). Both use single-thread
+This is a separate campaign alongside the existing Chen/Gómez queue. The
+bounded-process controller supports two Fritz workers alongside two main
+campaign workers on the current Mac. Both use single-thread
 numerical libraries and macOS sleep protection. Keep the Mac plugged in with the
 lid open. Do not start another copy of either running campaign.
 
@@ -50,6 +51,7 @@ After interruption, from the project directory:
 ```bash
 conda activate spectypus
 nohup ./scripts/overnight.sh results/fritz_assumed_observer_20261101 \
+  --workers 2 \
   >> results/fritz_assumed_observer_20261101/campaign.log 2>&1 &
 ```
 

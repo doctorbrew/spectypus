@@ -179,3 +179,51 @@ engines; exact execution IDs and saved artifacts were verified before reuse in t
 full batch. Results are conditional on the observer-frame assumption. Neither
 these tests nor fixed/free agreement establishes an individual spectrum's frame.
 See [FRITZ_BATCH.md](FRITZ_BATCH.md) and local `preflight.json` for the run scope.
+
+## Bounded parallel execution (2026-11-01)
+
+130 tests pass in the `spectypus` environment; one optional plotting-dependency
+test is skipped. Controller regressions cover serial/parallel candidate equality,
+verified resume without duplicate execution, dispatch limits, simultaneous worker
+bounds, engine-process cleanup on cancellation, disk and repeated-failure guards,
+worker crashes, corrupt-artifact retry, plan-drift rejection, and the single-writer
+lock. Full exports are now periodic rather than rebuilt after every fit. Native
+artifact and external-runtime verification remain enabled.
+
+`results/parallel_benchmark_20261101_124929/validation_contract.json` declares two
+spectra (1,642 and 5,956 samples), selected as the shortest/longest among spectra
+with all four engine/mode serial results already available. Eight native fits
+ran with two workers while the two original serial campaigns continued. All
+eight execution IDs, statuses and candidate values matched the verified serial
+baselines exactly; staged spectra, redshift-grid records, mask reports and saved
+fit curves also matched byte for byte where present. `check_results.py` reproduces
+the comparisons; `comparison.json` records them. The final controller's resume
+reused all eight attempts without a new fit (`resume_verification.json`).
+
+The bounded batch took 794.81 seconds, versus 1,135.77 seconds summed over the
+saved serial engine timings (which exclude serial controller overhead). This is
+not a controlled whole-campaign speed measurement: machine load differs, and
+parallel free-redshift fits took longer individually. Sampled peak combined RSS
+for the benchmark controller/workers/engines was 1.12 GiB, excluding the original
+campaigns and startup before resource sampling began. `resource_samples.json`
+retains the samples. Start with two workers per campaign, four fits total, rather
+than assuming all eleven CPU cores yield linear speedup.
+
+The handover retains the scientific package, inputs, settings and plan identities.
+`handover.json` records old/new controller PIDs and preexisting result pointers;
+completed evidence is preserved. This validates scheduling and reproducibility
+for the declared cases, not classification accuracy or a calibrated finish-time
+forecast. Further worker increases require a measured timeout/memory/throughput
+check under the intended total campaign load.
+
+### Synchronization verification (2026-11-03)
+
+`python -m pytest -q` in `spectypus`: 130 passed, one optional plotting-dependency
+test skipped, and one Starlette/httpx deprecation warning. An initial run had
+seven controller failures caused by the host's free space falling below the
+production 20 GiB guard. Controller tests now mock available capacity, with the
+low-space regression explicitly overriding it to verify blocked dispatch. This
+isolates scheduling checks from host capacity without changing the real guard.
+`bash -n scripts/overnight.sh` and `git diff --check` also passed. The existing
+native comparison and resume records were inspected, but no native fits were
+rerun for this synchronization.

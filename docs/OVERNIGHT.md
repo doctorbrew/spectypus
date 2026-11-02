@@ -53,10 +53,14 @@ After an interruption, resume from the project directory:
 conda activate spectypus
 nohup ./scripts/overnight.sh results/slsn_ztf_overnight_20261031 \
   --prioritize-batch chen \
+  --workers 2 \
   >> results/slsn_ztf_overnight_20261031/campaign.log 2>&1 &
 ```
 
-The script uses the frozen runtime saved inside the batch. It invokes
+The script imports the frozen scientific package saved inside the batch, using
+the scheduling controller in `scripts/run_saved_campaign.py`. Each invocation
+saves a controller snapshot, its SHA-256, and durable status under
+`controller_runs/`. Resume refuses a changed plan identity. It invokes
 `caffeinate -ims` on macOS, preventing idle/system sleep for the lifetime of the
 job (the system-sleep assertion requires AC power). **Keep the Mac plugged in
 and its lid open.** The display can turn off. No global power settings are
@@ -66,8 +70,8 @@ changed. Sleep protection ends when the job exits. Check it with:
 pmset -g assertions
 ```
 
-To stop cleanly, send SIGINT to the **controller PID in `campaign_status.json`**:
-`kill -INT <controller-pid>`. The running engine process group is terminated,
+To stop cleanly, send SIGTERM to the **controller PID in `campaign_status.json`**:
+`kill -TERM <controller-pid>`. Each running worker terminates its engine process group,
 prior completed attempts remain saved, and the same launch command resumes.
 The output lock rejects a second writer.
 
@@ -78,11 +82,32 @@ objects remain queued. Fixed-z runs precede free-z runs within each priority
 group, and Chen spectra are preferred within that ordering. This can require
 multiple nights; no next-morning completion is promised.
 
-Execution is serial with numerical-library threads limited to one. Each fit has
+Execution supports `--workers N` (default one) independent fitting processes.
+One controller holds the campaign lock and writes shared summaries; each worker
+writes only its private attempt. Keep the **total across campaigns** bounded:
+on the current 11-core Mac (five performance cores), two workers per campaign
+(four fits total) is the initial allocation tested under concurrent load. Numerical-library threads
+remain limited to one per worker to avoid nested oversubscription. Each fit has
 a 900-second timeout. The controller stops below 20 GiB free disk or after six
 consecutive execution failures. Completed and no-good-match attempts are reused
 on resume; a new explicit retry batch is required to repeat completed no-match
 searches. Do not modify the classifier environment or external banks mid-run.
+
+`campaign_status.json` lists every active fit in `active_runs`, retains `active`
+for older readers, and updates run counts after each saved result. Full
+hash-verified summary/CSV exports run at startup, exit, and at most once per
+`--summary-interval` seconds (default 300) between completions. They can therefore
+lag live progress; the viewer reads saved attempts directly. Artifacts are still
+verified on resume, after each parallel worker, and during full exports. The
+six-consecutive-failures guard stops further dispatch and cancels active work;
+already-dispatched fits may finish before cancellation. `--max-runs` bounds
+dispatch, not just the number of results observed by the controller.
+
+Free-redshift NGSF currently evaluates 101 redshifts (`0..1`, step `0.01`) and
+41 native extinction-grid values (`-4..4`, step `0.2`), or 4,141 grid points per
+spectrum across the selected SN/host templates. Multiprocessing increases
+throughput without reducing that grid, changing masks, or dropping templates.
+Changing the scientific search requires a separately declared campaign.
 
 ## Masking and input repair
 

@@ -211,3 +211,37 @@ Validation: 123 tests passed, covering contradiction checks, safe JSON extractio
 assumption persistence through aggregation/CSV and the review flag after successful
 fits. The run uses a frozen runtime and caffeinate; each campaign has one worker.
 See `docs/FRITZ_BATCH.md` for scope, provenance, exclusions and resume commands.
+
+## 2026-11-01 — bounded parallel campaign execution
+
+Replaced the saved-campaign controller's one-fit bottleneck with configurable
+process workers. The launcher uses the maintained scheduling controller while
+importing each campaign's unchanged frozen scientific package. Each invocation
+archives its controller and status; existing plan identity must match on resume.
+Workers write private attempts, and one locked controller owns shared exports.
+Added explicit active-run lists, incremental counts, periodic full verified
+summaries (default 300 seconds), cancellation through worker/engine process
+groups, and dispatch-bounded `--max-runs`. Existing disk, failure and artifact
+verification safeguards remain in force.
+
+Validation: 130 tests passed, one optional plot test skipped. Eight bounded native
+fits with two workers exactly reproduced saved serial IDs, candidates, statuses
+and curves. A subsequent resume executed zero fits. Measured contention motivates
+an initial two workers per campaign (four total). The two active campaigns were
+stopped with SIGTERM and resumed with their frozen plans and completed attempts
+preserved; no classifier code, template bank, search grid or masks were changed.
+Evidence, resource samples and the handover record are under
+`results/parallel_benchmark_20261101_124929/`; limits and timing interpretation
+are documented in `docs/VALIDATION.md`.
+
+## 2026-11-03 — verification before GitHub synchronization
+
+The full test suite initially reported seven controller failures because the
+host had less than 20 GiB free and the tests used its actual disk capacity.
+Controller tests now supply ample simulated free space by default; the explicit
+low-space test overrides that fixture and still verifies dispatch is blocked.
+The production disk guard and scientific execution code are unchanged by this
+test fix. Validation: `python -m pytest -q` in `spectypus` passed 130 tests with
+one optional plotting-dependency skip and one dependency deprecation warning.
+Shell syntax and diff whitespace checks passed. Existing native benchmark and
+resume records were inspected; no new real-engine fits were run.
