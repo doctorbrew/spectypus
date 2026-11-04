@@ -16,7 +16,7 @@ This records the documentation setup procedure. Normal sessions should read
 6. Validate local Markdown links, dependency installation, package tests and
    bounded engine execution before logging completion.
 
-No empty assets or passive bibliography directories were created: there are
-no embedded image assets or archived external papers yet. No changelog was
-created because there is no external release cadence. Create those standard
-owners when real content/release history exists, not as empty bureaucracy.
+At bootstrap, no empty assets or passive bibliography directories were created.
+The current visual assets are indexed in [assets/README.md](../../assets/README.md).
+No changelog was created because there was no external release cadence. Create
+new owners only when real content/release history exists, not as empty scaffolding.

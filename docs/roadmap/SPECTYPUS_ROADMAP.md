@@ -10,7 +10,7 @@ redshifts trigger free fits. Automatic line/host redshifts follow later.
 This is the canonical future-work plan. The [README](../../README.md) owns
 the quick start; [USAGE.md](../USAGE.md) owns detailed commands/contracts;
 [VALIDATION.md](../VALIDATION.md) owns evidence and
-limitations. Probability calibration and remote CI remain unimplemented.
+limitations. Probability calibration remains unimplemented; CI status is tracked in P6.
 
 ## Milestones
 
@@ -19,15 +19,36 @@ limitations. Probability calibration and remote CI remain unimplemented.
 | P0 | Package, reproducible execution and dedicated development environment | Complete for the bounded v0.1 validation scope | None |
 | P1 | Measure classification quality against independent labels | Proposed; evaluation data required | P0 |
 | P2 | Local results website for campaign and object review | Viewer, Python galleries and catalogue phases implemented; notes pending | P0; verified saved evidence |
-| P3 | Measured, bounded execution at campaign scale | Bounded process workers validated on eight native fits; both campaigns resumed with two workers each | P0; representative timing inputs |
+| P3 | Measured, bounded execution at campaign scale | Bounded workers and guarded NGSF JAX validated; controlled throughput and safe loading caches next | P0; representative timing inputs |
 | P4 | Improve and calibrate evidence combination | Deferred until benchmark exists | P1 |
 | P5 | Line/host-assisted redshift hypotheses | Deferred | P1; redshift-labelled validation set |
-| P6 | Reproducible release and verified GitHub badges | Later milestone | GitHub connection/authorization; release checks |
+| P6 | Reproducible release and verified GitHub badges | CI and private report-derived badges prepared; remote verification pending | GitHub access; real CI reports |
 
 P1 and P2 can advance independently: a viewer is useful before accuracy is
 measured, provided it labels all automated classifications as proposals.
-Basic CI should start when repository hosting is established; public badge
-polish and verification belong toward the end, as requested.
+CI and repository housekeeping now support these milestones. They do not
+substitute for independent scientific evaluation.
+
+## Next development phase
+
+1. **Measure complete free-z throughput and locate overhead (P3).** Run a
+   bounded, alternating native/JAX comparison on the same copied spectra,
+   hardware and grids, with repeats and resource limits declared first.
+   Separate imports, bank loading, provenance checks, arithmetic and output
+   time. Historical timings cannot establish the size of the speedup.
+2. **Optimize the measured bottleneck (P3).** Consider immutable template or
+   provenance caches only after profiling. Keys must include source/bank,
+   configuration and runtime identities; changed assets must invalidate them.
+   Require native candidate/score/curve equivalence, bounded memory and safe
+   interruption/resume before enabling any persistent worker or shared cache.
+3. **Build reviewed evaluation evidence (P1/P2).** Add annotations separately
+   from immutable fits, then an independently labelled, object-disjoint
+   evaluation manifest with template-overlap checks. Labels and abstentions
+   must remain traceable. Calibrated probabilities and accuracy claims wait
+   for that evaluation.
+
+The active SLSN/Fritz campaigns keep their frozen runtimes. New development
+uses isolated checkouts/environments and new `results/` directories.
 
 ## P0 — package and environment
 
@@ -166,22 +187,10 @@ Acceptance: serial and multi-worker scientific outputs agree for a frozen
 fixture; no duplicate active attempt; interruption/resume and concurrent-reader
 tests; demonstrated memory ceiling and explicit pending/failed work counts.
 
-An isolated five-spectrum fixed-z NGSF experiment now compares native execution,
-error-array caching, host-interpolation caching and reuse of repeated numerical
-intermediates. All 20 fits preserve native saved results; a paired arithmetic
-replay measures a median 1.546× CPU speed ratio for intermediate reuse. Whole-fit
-timings remain confounded by concurrent campaigns. These are experimental
-subprocess hooks, not production changes; see [VALIDATION.md](../VALIDATION.md)
-and [USAGE.md](../USAGE.md#isolated-ngsf-optimization-experiments).
-
-The five-spectrum follow-up now validates intermediate reuse across the full
-free-redshift grid: all 20,705 grid points ran, with exact native results and
-saved artifacts. On 20 saved fixed/free-z `A_v=0` fixtures, blocked NumPy reuse
-is bit-for-bit exact and measures a median 2.034× arithmetic CPU ratio. JAX
-float64 measures 5.779× and passes all 20 real-fixture checks, but its unrestricted
-prototype fails two nearly singular stress cases; float32 fails all 20 precision
-checks. These replay ratios exclude interpolation, loading and native-table
-reconstruction and do not describe the guarded backend below.
+The earlier cache/reduction/JAX prototype experiments are retained for
+reproducibility under `scripts/benchmarks/`; their outcomes and limitations
+belong in [VALIDATION.md](../VALIDATION.md). They are not duplicate production
+implementations to delete during housekeeping.
 
 NGSF now defaults to a guarded float64 CPU JAX backend for future plans, with
 explicit `native` and blocked `numpy` choices. Native NumPy rechecks unstable
@@ -230,33 +239,25 @@ high-redshift support is a separate tested adapter capability, not an assumed
 way around the current optical cap. Reduction and FITS ingestion are separate
 extensions, not prerequisites for the existing ASCII workflow.
 
-## P6 — release, CI and badges toward the end
+## P6 — continuous verification and release readiness
 
-Current state: this checkout is connected to the private repository
-`git@github.com:sPaMFouR/spectypus.git`, using its existing `main` branch and
-preserving its original GPLv3 LICENSE file. Repository access is verified and
-source publication is authorized. No Actions workflow or badge endpoint is
-configured; package-registry publication and formal releases remain pending.
+The repository is private, source publication is authorized, and the existing
+GPLv3 license is retained. `.github/workflows/ci.yml` now defines Python 3.10
+Linux tests with the package's declared engine/JAX/web/CI extras, JUnit and line
+coverage reports, distribution builds and an installed-wheel smoke check.
+It uses no external spectrum or template bank. Plot-style and real-engine
+integration coverage remain separate from this suite.
 
-1. Repository/branch access is established. Preserve the existing license and
-   define release/versioning policy before package-registry publication.
-2. Add basic CI using the package's own install extras, core tests and a wheel
-   import check. Separate optional real-engine integration tests from tests
-   that require no external data or bank access.
-3. Add JUnit/test and coverage reports; preserve the real test exit status.
-4. Apply the `github-badges` workflow: actual Python floor from packaging;
-   real build status; automatically generated tests-passed count and coverage
-   via an existing verified endpoint or an explicitly authorized user-controlled
-   gist. No hand-maintained count badges or broken placeholder URLs.
-5. Keep badge-update plumbing `continue-on-error: true`; use trusted events for
-   secret-bearing updates; give build status and test-count badges distinct labels.
-6. After an authorized push, inspect the actual step-level Actions logs and
-   rendered badge values. Until a real run and endpoint are verified, report
-   configuration as prepared/pending, never as working remote CI.
+Build, tests-passed and coverage SVGs are generated from each trusted push's
+actual reports and committed only to that tested branch under `assets/`.
+Each SVG records the source commit and Actions run. Metrics stay inside this
+private repository; no public gist, Shields endpoint or new credential is
+required. Pull requests run read-only checks. Publication skips an advanced
+branch; optional badge failures cannot turn passing tests into a failing build.
+Missing/failed/empty test reports cannot produce a green passing-count badge.
 
-Acceptance: a green real build whose step logs were read, installed wheel smoke,
-valid report-derived count/coverage, correct rendered values, and reproducible
-release artifacts. Badge-only failure cannot mark successful tests as failing;
-collection failure cannot produce a green zero-tests badge. Record verification
-in the development log. Do not create public resources or request credentials
-merely to write this roadmap.
+Current acceptance: local tests and YAML checks run before publishing; actual
+step logs and generated remote badge values must be verified before marking
+CI complete. Package-registry publication, a release versioning policy and
+broader supported-platform checks remain pending. No release or calibrated
+classification claim follows from green software tests.

@@ -1,6 +1,6 @@
 # Development log
 
-Append consequential changes here. Current usage belongs in README; current
+Append consequential changes here. Detailed usage belongs in USAGE.md; current
 milestone status belongs in the roadmap. This log starts with the documentation
 bootstrap; earlier implementation evidence is linked rather than backfilled.
 
@@ -338,3 +338,21 @@ The isolation audit verifies all 30 attempts and the unchanged live SLSN
 controller/plan, source spectra and engine sources. Shared packages and active
 campaigns remain untouched. PR #1 had been merged, so this follow-up uses
 `perf/guarded-jax-default` based on the updated remote `main`.
+
+## 2026-11-04 — repository and CI housekeeping
+
+Audited all tracked READMEs, documentation routing and the top-level layout.
+Corrected stale usage/viewer pointers, separated historical bootstrap statements
+from the current asset layout, and condensed superseded experiment narratives
+in the roadmap into links to their evidence owner. The next phase now targets
+controlled full-search timing, measured loading/provenance bottlenecks, then
+reviewed labels and independent scientific evaluation.
+
+Added Python 3.10 Linux CI using declared install extras, real JUnit/coverage
+reports, distribution builds and an isolated installed-wheel smoke check.
+Trusted pushes generate private, report-derived badge SVGs in existing assets;
+PR jobs remain read-only. Badge publication cannot fail the scientific test job
+and skips branches that advanced during a run. No external metric endpoint or
+credential is introduced. Local verification: 157 passed, 11 optional skips;
+failure/collection/missing-report and SVG provenance tests pass. Remote CI and
+badge verification follow the first push; no green badge is added in advance.

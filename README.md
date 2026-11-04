@@ -127,5 +127,19 @@ Choose an object’s Review button or its Fixed-z/Free-z classifier links.
 [Examples](examples/) · [Validation](docs/VALIDATION.md) ·
 [Roadmap](docs/roadmap/SPECTYPUS_ROADMAP.md)
 
+## Development
+
+```bash
+conda activate spectypus
+python -m pytest -q
+python -m build
+```
+
+Code lives in `src/`, tests in `tests/`, runnable helpers in `scripts/`, guides
+in `docs/`, input examples in `examples/`, and graphics in `assets/`. GitHub
+automation lives in `.github/`. Generated scientific evidence stays in ignored
+`results/`; environments and Python build/cache files are also excluded from Git.
+See the [project index](docs/PROJECT_INDEX.md) for documentation ownership.
+
 **Scope:** reduced spectra, batch classification and local review. Raw-data
 reduction and accuracy measurements against independent labels are future work.
