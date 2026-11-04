@@ -75,7 +75,7 @@ jobs:
     needs: checks
     continue-on-error: true
     # Never grant write credentials to pull-request jobs or fork code.
-    if: always() && github.event_name == 'push'
+    if: always() && github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
