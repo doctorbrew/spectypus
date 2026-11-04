@@ -12,4 +12,5 @@ science fixtures.
 - `targets.example.csv` demonstrates the optional external redshift table.
   Missing objects/blank redshifts retain the normal unknown-redshift behavior.
 
-The main README documents commands, score semantics and scientific limits.
+See the [main README](../README.md) for the quick start and
+[USAGE.md](../docs/USAGE.md) for configuration, score semantics and scientific limits.
