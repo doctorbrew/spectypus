@@ -1,12 +1,14 @@
 {
   "engines": {
     "ngsf": {
+      "backend": "jax",
       "enabled": true,
       "parameters": "/path/to/NGSF/parameters.json",
       "python": "/path/to/classify/bin/python",
       "root": "/path/to/NGSF"
     },
     "snid_sage": {
+      "backend": "native",
       "enabled": true,
       "python": "/path/to/classify/bin/python",
       "templates": "/path/to/SNID-SAGE/templates",

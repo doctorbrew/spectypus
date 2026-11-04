@@ -123,6 +123,7 @@ def build_command(run: dict, config: dict, directory: Path) -> tuple[list[str], 
     output.mkdir()
     windows = config.get("telluric_windows", [])
     write_json(directory / "spectral_features.json", {
+        "backend": cfg.get("backend", "native"),
         "telluric_windows": windows, "wavelength_frame": "observer", "wavelength_unit": "angstrom",
         "host_lines_masked": False, "supplied_redshift": run["redshift"],
         "save_fit_curves": config.get("save_fit_curves", False), "top_n": config["top_n"],
@@ -168,8 +169,7 @@ def build_command(run: dict, config: dict, directory: Path) -> tuple[list[str], 
     write_json(directory / "parameters.json", params)
     root = Path(cfg["root"])
     command = [cfg["python"], str(NGSF_BRIDGE), str(root / "run.py"), str(directory / "parameters.json")]
-    if windows or config.get("save_fit_curves"):
-        command += [str(directory / "spectral_features.json")]
+    command += [str(directory / "spectral_features.json")]
     return command, root, output / "spectrum.csv"
 
 

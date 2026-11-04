@@ -63,6 +63,7 @@ def prepare(campaign, root):
     config = copy.deepcopy(original['config'])
     config['engines'] = {'ngsf': config['engines']['ngsf']}
     cfg = config['engines']['ngsf']
+    cfg['backend'] = 'native'  # this runner supplies its own experimental hooks
     shutil.copy2(cfg['parameters'], root / 'native_parameters.json')
     cfg['parameters'] = str(root / 'native_parameters.json')
     config['timeout_seconds'] = 900

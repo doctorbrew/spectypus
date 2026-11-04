@@ -11,7 +11,7 @@ probabilities or secure scientific classifications.
 
 For current capabilities and evidence, read [validation](VALIDATION.md).
 The [roadmap](roadmap/SPECTYPUS_ROADMAP.md) tracks further results review,
-campaign-scale execution, scientific evaluation and later CI/badges.
+campaign-scale execution, scientific evaluation and release readiness.
 The [project index](PROJECT_INDEX.md) routes development documentation.
 The local results viewer is described in [RESULTS_VIEWER.md](RESULTS_VIEWER.md).
 
@@ -31,7 +31,7 @@ spectypus init --config spectypus.local.json
 ```
 
 Run creation from this project directory. If the environment already exists,
-activate it and use `python -m pip install -e '.[dev,engines]'` to update the
+activate it and use `python -m pip install -e '.[dev,engines,jax]'` to update the
 local package. Skip `init` when a configured local JSON already exists: it
 deliberately refuses to overwrite one. Find the active interpreter with
 `python -c 'import sys; print(sys.executable)'` and use it for **both** engine
@@ -61,6 +61,81 @@ and point the adapters at an external classifier environment.
 The adapters target SNID-SAGE 1.2.3's candidate API and the legacy NGSF
 `run.py PARAMETERS.json` interface. Other versions require verification.
 Execution and file locks currently target macOS/Linux (POSIX), not Windows.
+
+## Fitting backends
+
+`engines.ngsf.backend` accepts `jax` (default for future plans), `numpy`, and
+`native`. `native` retains the external engine's arithmetic. `numpy` reuses
+normal-equation reductions and computes eight SN templates at a time without
+changing the summation order. `jax` uses the tested float64 CPU kernel, then
+recomputes ill-conditioned/cancellation-sensitive mixtures, near-perfect fits,
+and candidate contenders with native NumPy. Contenders within a conservative
+score margin are rechecked until the selected set is stable. Native table
+construction, sorting, interpolation, full search grids and masks are retained.
+
+Only the tested NGSF source hash is accelerated. Other versions use native
+execution and record the reason. Missing/unsupported JAX falls back to NumPy;
+JAX runtime exceptions are recorded and switch the remainder of that fit to
+NumPy. These numerical/backend fallbacks do not convert an engine failure into
+a successful match. The normal engine result parsing and error handling apply.
+
+Every attempt saves `backend.json`. The configured backend, interpreter,
+installed package versions and Spectypus source participate in execution
+identity, so backend changes create new attempts. Existing saved attempts and
+campaigns with frozen runtimes retain their original behavior. SAGE currently
+accepts only `engines.snid_sage.backend: "native"`, its vectorized FFT path.
+
+Fresh environments created from `environment.yml` include the `jax` extra.
+Do not install into an interpreter serving a live campaign: changing its
+packages invalidates its frozen provenance. To prepare an isolated engine
+environment while using the existing conda NumPy/SciPy binaries:
+
+```bash
+conda activate spectypus
+python -m venv --system-site-packages .venv-future
+.venv-future/bin/python -m pip install -e '.[jax]'
+.venv-future/bin/python -c 'import sys; print(sys.executable)'
+```
+
+Set the NGSF `python` field to that printed path for future plans. Python
+symlinks are preserved so the venv remains effective. The overlay reads shared
+packages; retain the base environment unchanged until its campaigns complete.
+Use a new independent conda environment instead if the base must change.
+
+The README's complete-fit timing applies to the guarded backend. The older
+arithmetic microbenchmarks below measure a different, unrestricted prototype;
+their 5.78× ratio is not a future campaign speed estimate.
+
+### Reproduce the bounded backend checks
+
+With the five-spectrum reference experiment and isolated JAX interpreter
+already prepared using the benchmark instructions below, create a **new**
+output directory. The preparation command must import this checkout's source:
+
+```bash
+conda activate spectypus
+PYTHONPATH="$PWD/src" python scripts/benchmarks/validate_ngsf_backend.py prepare \
+  --reference results/ngsf_free_five_20261103 \
+  --output results/ngsf_backend_check --python "$PWD/.venv/bin/python"
+PYTHONPATH="$PWD/results/ngsf_backend_check/runtime" nice -n 15 python \
+  results/ngsf_backend_check/run_experiment.py run results/ngsf_backend_check
+python scripts/benchmarks/report_ngsf_backend.py results/ngsf_backend_check \
+  --output results/ngsf_backend_check/report
+```
+
+This freezes the runtime and input copies, runs at most 20 fits with one worker
+(15 fixed-z native/NumPy/JAX fits and five full free-z JAX fits), and verifies
+native candidates and scientific artifacts. Each fit has a 1,800-second timeout;
+dispatch stops below 8 GiB raw free disk. Completed experiments cannot be
+overwritten. Free-z references are historical, so their timing is not paired.
+
+`scripts/benchmarks/benchmark_sage_fft.py` separately compares native and JAX
+complex128 FFTs in ten fixed-z fits on the same five spectra. Its `prepare`
+command accepts `--reference`, `--output`, `--python`, and `--templates`; use the
+same frozen-runtime launch pattern. The hook is confined to this experiment
+and is **not an available production SAGE backend**. It records FFT-stage and
+whole-attempt times separately, preserving evidence for the backend decision.
+Use its `report ROOT --output ROOT/report` command to generate the comparison.
 
 ## Inputs and a first batch
 
@@ -214,7 +289,9 @@ classification support; the observations and original plan provenance remain
 recorded. This detects changes at the checks rather than creating an immutable
 filesystem snapshot of external engines.
 
-Classifiers execute serially with streamed logs and a configurable timeout.
+The basic `spectypus run` command executes serially with streamed logs and a
+configurable timeout. The saved-campaign controller additionally supports
+bounded parallel workers; see [overnight operation](OVERNIGHT.md).
 Each has private parameters, staged input, output and cache directories. The
 shared NGSF configuration and original spectra are never edited. A process
 lock prevents simultaneous writers to the same output directory. Exit codes:
@@ -254,8 +331,34 @@ are kept under ignored `results/` directories.
 
 Deferred work: line/host-based redshift inference, spectrum reduction, FITS
 readers, classification calibration on held-out objects, treatment of correlated
-epochs and template-bank imbalance, and a review UI. No PyPI publication or
+epochs and template-bank imbalance, and human review annotations. The read-only
+review UI is already available. No PyPI publication or
 GitHub push is performed by local installation.
+
+### Continuous verification
+
+`.github/workflows/ci.yml` runs Python 3.10 on Linux using
+`.[dev,webtest,engines,jax,ci]`. It tests software behavior with synthetic data,
+builds the source distribution and wheel, and imports/runs the installed wheel
+in a fresh environment outside the checkout. No real spectra or template banks
+are loaded. Optional plot-style coverage and real-engine checks remain separate.
+The `ci` extra supplies coverage reporting; the core package stays dependency-free.
+
+JUnit, line-coverage XML and distribution files are downloadable from the
+[Actions run](https://github.com/sPaMFouR/spectypus/actions/workflows/ci.yml) as
+the private `ci-reports` artifact (14-day retention). Build/test/coverage badges
+are generated from those reports on trusted default-branch pushes and committed
+under `assets/` on that branch. PRs upload reports without bot commits. Their SVG titles include the source SHA
+and run URL. A badge is the last published report, not a claim that an in-flight
+or newer untested commit passed; use Actions for current checks. Runtime/license
+badges reflect `pyproject.toml` and `LICENSE`.
+
+PR jobs have read-only repository permissions. Badge publication needs no
+external endpoint or token secret, skips an advanced branch, and cannot turn
+passing tests into a failed build. GitHub's own bot commits do not start another
+workflow run. Report/collection failures cannot create a green passing-count
+badge; unavailable coverage stays unavailable. CI coverage is a software test
+metric and says nothing about classification accuracy or calibration.
 
 
 ## Telluric masks, model curves and overnight priority
