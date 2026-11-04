@@ -166,6 +166,31 @@ Acceptance: serial and multi-worker scientific outputs agree for a frozen
 fixture; no duplicate active attempt; interruption/resume and concurrent-reader
 tests; demonstrated memory ceiling and explicit pending/failed work counts.
 
+An isolated five-spectrum fixed-z NGSF experiment now compares native execution,
+error-array caching, host-interpolation caching and reuse of repeated numerical
+intermediates. All 20 fits preserve native saved results; a paired arithmetic
+replay measures a median 1.546× CPU speed ratio for intermediate reuse. Whole-fit
+timings remain confounded by concurrent campaigns. These are experimental
+subprocess hooks, not production changes; see [VALIDATION.md](../VALIDATION.md)
+and [USAGE.md](../USAGE.md#isolated-ngsf-optimization-experiments).
+
+The five-spectrum follow-up now validates intermediate reuse across the full
+free-redshift grid: all 20,705 grid points ran, with exact native results and
+saved artifacts. On 20 saved fixed/free-z `A_v=0` fixtures, blocked NumPy reuse
+is bit-for-bit exact and measures a median 2.034× arithmetic CPU ratio. JAX
+float64 measures 5.779× and passes all 20 real-fixture checks, but fails two
+nearly singular stress cases; float32 fails all 20 precision checks. JAX remains
+experimental and is not ready for production. These replay ratios exclude
+interpolation, loading and native-table reconstruction.
+
+Next acceptance work: validate additional native versions and introduce any
+intermediate-reuse integration behind an explicit opt-in with source-version
+checks. Test blocked NumPy arithmetic in full fits before promoting it. For
+JAX, add and validate native handling of ill-conditioned mixtures, then extend
+to extinction variation and full-search ranking. Measure cold/warm startup and
+template loading separately. No new backend, shared mutable cache or relaxed
+provenance check is enabled by these experiments.
+
 ## P4 — evidence combination and calibration
 
 Use P1 to compare the current equal-engine winner baseline with class-level

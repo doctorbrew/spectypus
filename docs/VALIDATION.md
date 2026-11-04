@@ -227,3 +227,196 @@ isolates scheduling checks from host capacity without changing the real guard.
 `bash -n scripts/overnight.sh` and `git diff --check` also passed. The existing
 native comparison and resume records were inspected, but no native fits were
 rerun for this synchronization.
+
+## Five-spectrum NGSF optimization experiment (2026-11-03)
+
+Development is isolated on `perf/ngsf-five-spectrum-cache` in the sibling
+`_Project_SpecTypus_ngsf_perf` worktree. Production code and the external NGSF
+checkout/bank are unchanged. The experiments use subprocess-local hooks and
+copied inputs, one background-priority worker (`taskpolicy -b`, nice 15), and
+single-thread numerical libraries. The active SLSN campaign is not restarted
+or reconfigured. Shared CPU/disk activity remains a timing confounder.
+
+Five unique Chen spectra were copied directly from the SLSN project using
+input-length quantiles among eligible spectra with catalogue redshifts:
+SN2018bgv, SN2019cwu, SN2019gqi, SN2020dlb and SN2020jii. They span 1,642–6,685
+input samples. Original hashes, rest-frame Angstrom declarations and catalogue
+redshift provenance are retained. Each trial uses the supplied fixed redshift,
+all 41 native extinction points (`-4..4`, step `0.2`), 947 selected SN template
+entries, 11 host templates, original overlap rules, telluric masks and native
+`CHI2/dof2` scoring. No grid thinning or template pruning is applied.
+
+Twenty full fits compare four stages. All 15 comparisons to the five native
+baselines preserve statuses and candidate records exactly, with byte-identical
+native CSVs, staged spectra, mask reports and saved fit curves. Each stage has
+two completed-match results and three no-good-match results.
+
+| Stage | Change | Observed total core time, five fits | Recorded attempt time, five fits |
+| --- | --- | ---: | ---: |
+| 0 | Native reference | 141.57 s | 498.38 s |
+| 1 | Cache the object-error array | 95.75 s | 448.49 s |
+| 2 | Also cache host interpolation at each redshift | 98.89 s | 443.22 s |
+| 3 | Also reuse native reductions and residuals | 68.39 s | 400.15 s |
+
+These totals are **observations under varying concurrent load**, not controlled
+causal speedup estimates. Stage ordering rotates for the first three stages;
+stage 3 follows them. One native spectrum's core took 52.42 s, whereas its cache
+variants took about 17 s; the small cached error calculation cannot account for
+that difference. Stage 1 reduces error computations from 205 to five across the
+sample, but the first native fit spent only 0.088 s of 21.14 s in that function.
+Stage 2 similarly reduces galaxy interpolation evaluations from 205 to five.
+Large end-to-end gains from those caches alone are not established. Attempt
+time includes runtime verification and engine startup but excludes planning
+and final artifact hashing. Stage 3 also saves a numerical replay fixture.
+
+Stage 3 reuses five identical native reductions and the residual array: 13
+`nansum` calls become seven per grid point, with no changed summation order or
+score formula. A source-shape check rejects unsupported transformations. Tests
+cover masks, cache mutation isolation, redshift/grid invalidation, singular
+mixtures and overflow; full native result comparisons cover the real fits.
+
+To separate arithmetic from startup/load effects, the masked arrays at `A_v=0`
+were replayed for each spectrum. Five measured pairs per case alternate native
+and optimized order after one excluded warm-up pair. Every native table column
+and returned score remains exactly equal. The median of the five per-spectrum
+paired CPU-time ratios is **1.546×**, with per-spectrum medians **1.51–1.57×**
+(about **35% less arithmetic CPU time**). This excludes interpolation, error
+estimation, template loading, provenance checks and disk I/O; it is not a
+whole-campaign speedup, free-redshift validation or classification-accuracy claim.
+
+Evidence in the development worktree:
+
+- `results/ngsf_cache_five_20261103/`: input provenance, frozen code/configuration,
+  15 native/cache attempts, component timings and ten exact comparisons.
+- `results/ngsf_core_reuse_five_20261103/`: five stage-3 attempts, numerical
+  fixtures, five exact full-fit comparisons and `paired_replay.json`.
+- `results/ngsf_core_reuse_five_20261103/report/`: machine-readable totals,
+  per-spectrum CSV and an HTML comparison.
+
+The first runner inherited a relative `PYTHONPATH`; its editable-install
+fallback package was checked byte-for-byte against the worktree and matched.
+`package_source_check.json` retains this check. Subsequent runners explicitly pin
+the worktree's absolute package path. Code snapshots record the executed versions.
+Final automated checks: 138 passed, one optional plotting-dependency test skipped,
+one existing Starlette/httpx deprecation warning. Free-redshift searches, other
+NGSF versions, JAX and production integration remain unvalidated by this trial.
+
+## Free-redshift and JAX follow-up (2026-11-03)
+
+The follow-up keeps the same isolated worktree and five copied spectra.
+`results/ngsf_free_five_20261103/` freezes the package, scripts, input/configuration
+and verified historical native free-z reference attempts. Each new fit retains
+the complete 101-redshift by 41-extinction grid, 947 SN entries and 11 hosts,
+with original masks, overlap rules, scores and curve capture. The bounds are
+five fresh attempts, one nice-15 worker, one numerical thread, and 2,400 seconds
+per attempt. Unlike the preceding fixed-z trial, this runner does not request
+macOS background I/O policy. It leaves the production campaign's settings and
+900-second timeout unchanged. Historical native wall times are unpaired;
+different scheduling and concurrent load preclude a causal speed comparison.
+
+All five full free-z fits passed exact comparison against their copied native
+references: statuses, candidates, staging metadata, effective parameters,
+native CSVs, saved curves, masks, staged spectra and redshift-grid records.
+The result remains two completed-match cases and three no-good-match cases.
+Each fit executed all 4,141 core calls, with one error-array computation and
+101 host-interpolation computations. Across the sample that is 20,705 grid
+points, five error computations and 505 host interpolations. No grid point or
+template was removed. `comparison.json` retains every comparison and timing.
+
+| Spectrum | Native outcome preserved | New attempt time |
+| --- | --- | ---: |
+| SN2018bgv | Completed match | 812.96 s |
+| SN2019cwu | No good match | 742.61 s |
+| SN2019gqi | Completed match | 699.19 s |
+| SN2020dlb | No good match | 773.59 s |
+| SN2020jii | No good match | 798.29 s |
+
+These checks extend intermediate-reuse equivalence to this full free-z setup.
+They do not establish classification accuracy, other engine versions or a
+whole-search speed factor. Production integration remains separate.
+
+JAX is installed only in the worktree's `.venv` overlay. The shared `spectypus`
+environment retains its existing engine packages and no JAX installation.
+The optional `benchmark-jax` extra pins JAX/jaxlib 0.6.2 for this Python 3.10
+experiment. All JAX work uses the CPU backend and explicitly enabled float64;
+float32 is a negative precision control. Following the
+[JAX benchmarking guidance](https://docs.jax.dev/en/latest/benchmarking.html),
+the runner synchronizes device work, separates first-call/transfer costs, and
+compares warmed operations on the same saved numerical arrays. It does not
+patch the production engine or measure a GPU.
+
+The initial 32-template-chunk pilot in `results/jax_fixed_five_20261103/` stopped
+after its first float64 fixture: measured warm process CPU/wall was 1.624,
+above the declared 1.5 resource guard despite single-thread environment flags.
+Its apparent wall-speed ratio is therefore not an accepted single-core result.
+Top-ten identities agreed, but finite/invalid score masks did not. The first
+fixture has 44 template/host combinations exactly at the strict 70% overlap
+boundary. Small reproductions in `results/jax_boundary_probe_20261103/` show
+that using a runtime sample-count divisor restores the native cutoff decision,
+including an actual template from that fixture. The compiled-code probe in
+`results/jax_overlap_lowering_20261103/` confirms reciprocal multiplication for
+a constant divisor: `364/520` becomes `0.7000000000000001`, whereas native and
+runtime division give `0.7`. That last-bit change crosses the strict cutoff.
+JAX documents how compiler rewrites can alter
+[floating-point results](https://docs.jax.dev/en/latest/faq.html#jit-changes-the-exact-numerics-of-outputs).
+
+The updated probe in `results/jax_positive_mixture_probe_20261103/` also tests
+a nearly singular mixture with positive coefficients. It exposes coefficient
+and residual-statistic differences, in addition to a coefficient difference
+on a rejected near-singular mixture. The ordinary, negative-coefficient,
+strict-overlap, exactly singular, zero-error and tiny-error cases agree after
+the overlap correction. These findings are reasons to retain numerical gates,
+not to loosen them or silently change the native scoring method.
+
+The follow-up replay uses eight-template chunks, `NPROC=1`, disabled asynchronous
+CPU dispatch and the same measured resource guard. Float64 acceptance requires
+identical NaN/Inf masks, exact sample counts and ordered top-ten indices, and
+all finite coefficients/statistics within `rtol=1e-9`, `atol=1e-10`. An edge-case
+failure blocks overall numerical acceptance even when real-spectrum fixtures
+pass. Alternating-order timing pairs compare native NumPy, reused NumPy,
+reused NumPy in the same small blocks, and JAX. Both NumPy variants must remain
+bit-for-bit equal to native arithmetic. The block control separates memory
+locality from compilation benefits. All replay timings exclude interpolation,
+template loading, native-table reconstruction and whole-search ranking.
+
+The completed replay in `results/jax_fixed_free_twenty_20261103/` covers all
+20 fixtures: five supplied-redshift points and `z=0, 0.5, 1` for each spectrum,
+all at `A_v=0`. Float64 passes all 20 numerical/ranking checks; float32 passes
+zero. Six of eight synthetic cases pass, but both nearly singular cases fail,
+so **overall JAX numerical acceptance is false**. Both NumPy reuse variants
+remain bit-for-bit equal to native arithmetic on all 20 real fixtures.
+
+| Arithmetic implementation | Median paired CPU speed ratio to native | Native-equivalence evidence |
+| --- | ---: | --- |
+| Reuse NumPy reductions/residuals | 1.766× | Exact on 20 fixtures; full-fit checks separately pass |
+| Also process eight SN templates per block | 2.034× | Exact on 20 fixtures; full-fit block implementation untested |
+| JAX float64, eight-template blocks | 5.779× | 20/20 real fixtures within tolerance; two stress cases fail |
+
+The JAX CPU ratio spans 5.25–6.64× across fixtures. Its median paired ratio is
+3.32× against unblocked NumPy reuse and 2.83× against blocked NumPy reuse.
+These are warmed arithmetic CPU measurements, not full-classifier acceleration
+factors. They also differ in scope from the earlier 1.546× replay, which included
+native table reconstruction. The float64 first compiled-shape call took
+0.179 seconds, with that shape reused across all 20 fixtures. The maximum
+observed warm process CPU/wall ratio across both precision modes was 1.135,
+below the 1.5 stop threshold; this measures the resource controls' effect
+without asserting perfectly single-threaded JAX execution.
+
+`report/comparison.html`, `report/per_fixture.csv` and `report/summary.json`
+provide the interactive comparison and underlying figures. The isolation audit
+in `results/ngsf_free_five_20261103/audit/isolation.json` verifies original and
+copied input hashes, reference/new attempts, frozen files, cache/grid counts,
+unchanged native source, and the same live SLSN PID, controller and plan.
+The shared environment still has no JAX installation. No production backend,
+campaign configuration, template bank or scoring rule was changed.
+
+Follow-up before a JAX backend: preserve native behavior for ill-conditioned
+mixtures (for example through a tested native fallback), then expand beyond
+`A_v=0` fixtures to full-search and additional-version comparisons. Blocking
+NumPy arithmetic is a separate promising option requiring full-fit validation.
+
+Automated verification: the core suite passed 141 tests with three optional
+dependency skips and one existing Starlette/httpx deprecation warning. The
+isolated JAX environment passed all five kernel unit tests, including the
+strict decimal-overlap regression (rechecked on 2026-11-04). These unit-test
+passes do not override the two failed numerical stress cases above.

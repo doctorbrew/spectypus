@@ -245,3 +245,60 @@ test fix. Validation: `python -m pytest -q` in `spectypus` passed 130 tests with
 one optional plotting-dependency skip and one dependency deprecation warning.
 Shell syntax and diff whitespace checks passed. Existing native benchmark and
 resume records were inspected; no new real-engine fits were run.
+
+## 2026-11-03 — isolated five-spectrum NGSF performance experiment
+
+Created branch `perf/ngsf-five-spectrum-cache` in a separate worktree to preserve
+the active campaign checkout and its local edits. Copied five length-stratified
+Chen spectra with their frame/redshift provenance and hashes. Ran 20 fixed-z
+fits, serially at background priority, retaining the native full extinction
+grid, 947 selected SN template entries, 11 hosts, masks and score semantics.
+External source/bank assets and production campaign processes were not changed.
+
+Added opt-in benchmark launchers for error-array caching, host interpolation
+caching and exact reuse of native numerical intermediates. Hooks exist only in
+benchmark subprocesses. The first two steps remove repeated work but their
+end-to-end benefit is not established under concurrent load. Reusing reductions
+and residuals lowers native `nansum` calls from 13 to seven per grid point.
+Twenty full fits yield 15 exact status/candidate/artifact comparisons. A separate
+alternating-order replay on the five saved `A_v=0` fixtures measures a median
+1.546× arithmetic CPU speed ratio with exact table/score equality.
+
+Evidence and limitations are in `docs/VALIDATION.md`, commands in `docs/USAGE.md`,
+and follow-up acceptance work in the canonical roadmap. Test suite: 138 passed,
+one optional skip, one existing dependency deprecation warning. No free-z or
+JAX speed claim is made, and the prototype is not enabled in production.
+
+## 2026-11-03 — full free-redshift equivalence and isolated JAX testing
+
+Ran five new intermediate-reuse fits against copied, verified historical
+native free-z references, retaining all 101 redshifts and 41 extinction values.
+All 20,705 grid points ran and all five status/candidate/artifact comparisons
+are exact. Recorded cache counts agree with the declared experiment. A frozen
+package import path keeps the benchmark separate from the active campaigns.
+
+Added a pinned optional JAX overlay and arithmetic replay on 20 saved fixtures.
+The first pilot stopped at its CPU guard and exposed a strict-overlap rounding
+error. A small compiled-code reproduction confirmed constant division becoming
+reciprocal multiplication; a runtime divisor restores native cutoff decisions.
+The revised trial uses smaller chunks, constrained CPU dispatch, paired timing
+and a blocked NumPy control. All 20 float64 real fixtures pass; float32 passes
+none. Two nearly singular stress cases still fail, so JAX remains experimental.
+Median arithmetic CPU ratios are 1.766× for NumPy reuse, 2.034× with blocking,
+and 5.779× for JAX float64. They exclude full-engine overhead and compilation.
+
+The isolation audit verifies source/input/reference hashes and the same live
+SLSN controller, PID and plan. External assets and production settings remain
+unchanged; JAX is absent from the shared environment. Evidence and limits are
+recorded in `docs/VALIDATION.md`, commands in `docs/USAGE.md`, and remaining
+integration/validation work in the canonical roadmap. No publication or
+production-backend activation is part of this change.
+
+## 2026-11-04 — finalize free-redshift/JAX verification report
+
+Finished the saved comparison report and recorded final checks: 141 core tests
+passed with three optional dependency skips; all five isolated JAX kernel unit
+tests passed. The two numerical stress-case failures remain explicit blockers
+for JAX production use. Rechecked that the original SLSN PID, controller and
+plan remain active and unchanged. Completed classification experiments were
+not rerun. Changes remain local to `perf/ngsf-five-spectrum-cache`.

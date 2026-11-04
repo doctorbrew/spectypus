@@ -266,3 +266,134 @@ Both default to disabled for existing configurations. `redshift_mode: "both"`
 runs fixed and free fits for known-z targets, and free fits for unknown-z targets.
 Host-line markers use supplied redshifts and do not mask the lines. See
 [OVERNIGHT.md](OVERNIGHT.md) for the current protocol and restart instructions.
+
+## Isolated NGSF optimization experiments
+
+The scripts in `scripts/benchmarks/` are opt-in experiments, outside the installed
+pipeline. Use a separate Git worktree while campaigns are active. They read the
+external NGSF checkout and bank, and install trial functions only inside each
+benchmark subprocess. They never update a campaign's controller or saved fits.
+
+Prepare five copied spectra from the existing SLSN campaign. Selection uses
+input-length quantiles among eligible unique Chen spectra with known redshifts;
+frame metadata, redshift provenance and input hashes are retained. Choose a new
+output directory for each experiment:
+
+```bash
+conda activate spectypus
+PYTHONPATH=src python scripts/benchmarks/benchmark_ngsf.py prepare \
+  --campaign /path/to/original/results/slsn_ztf_overnight_20261031 \
+  --output results/ngsf_cache_trial
+PYTHONPATH=src /usr/sbin/taskpolicy -b nice -n 15 python \
+  results/ngsf_cache_trial/experiment/benchmark_ngsf.py \
+  run results/ngsf_cache_trial --mode fixed
+PYTHONPATH=src /usr/sbin/taskpolicy -b nice -n 15 python \
+  scripts/benchmarks/benchmark_core_reuse.py \
+  --reference results/ngsf_cache_trial --output results/ngsf_core_trial
+```
+
+`taskpolicy -b` is macOS-specific; on Linux omit it and retain `nice -n 15`.
+Both runners use one worker and one numerical-library thread. The first runs
+15 fits: native, error-array cache, and error plus galaxy-interpolation caches
+for five spectra, with rotated stage ordering. The second runs five additional
+fits with repeated native reductions and residuals reused. Fixed-z tests retain
+the full native extinction grid, template selection, masks and curve capture.
+Each fit has a 900-second timeout. The experiment stops dispatch below 8 GiB raw
+free space or above 512 MiB of experiment files; this small bounded experiment's
+reserve does not change the production campaign's 20 GiB guard.
+
+Each experiment saves its contract, copied inputs/configuration, code snapshots,
+distinct stage plans, verified attempts, inclusive component timings and exact
+candidate/artifact comparisons. Re-invocation verifies completed attempts;
+incomplete evidence requires a new output directory. Concurrent campaigns and
+background scheduling confound wall-clock comparisons. See [VALIDATION.md](VALIDATION.md)
+for measured outcomes and scope. Free-z trials are separately selectable in the
+first runner, but fixed-z results do not establish free-z speed or equivalence.
+
+Stage 3 also saves the masked numerical arrays at `A_v=0`. A paired replay can
+compare the original and optimized arithmetic on those identical arrays, using
+five alternating-order measured pairs per spectrum after one warm-up pair:
+
+```bash
+PYTHONPATH=src /usr/sbin/taskpolicy -b nice -n 15 python \
+  scripts/benchmarks/replay_ngsf_core.py results/ngsf_core_trial \
+  --output results/ngsf_core_trial/paired_replay.json
+PYTHONPATH=src python scripts/benchmarks/report_ngsf.py \
+  --cache-root results/ngsf_cache_trial --core-root results/ngsf_core_trial \
+  --paired results/ngsf_core_trial/paired_replay.json \
+  --output results/ngsf_core_trial/report
+```
+
+The replay verifies each saved attempt and compares every native table column
+and returned score exactly. It excludes interpolation, error estimation,
+template loading and disk I/O; its speed ratio is specific to arithmetic at
+those five grid points. It is not an end-to-end or free-redshift speed claim.
+
+### Full free-redshift check
+
+The separate free-z runner copies verified historical native results for the
+same five spectra and compares five new intermediate-reuse fits against them.
+It retains all 101 redshifts (`0..1`, step `0.01`) and 41 extinction values,
+giving 4,141 grid points per spectrum. The frozen package path is required:
+
+```bash
+conda activate spectypus
+PYTHONPATH="$PWD/src" python scripts/benchmarks/benchmark_free_redshift.py prepare \
+  --campaign /path/to/original/results/slsn_ztf_overnight_20261031 \
+  --output results/ngsf_free_trial
+PYTHONPATH="$PWD/results/ngsf_free_trial/runtime" nice -n 15 python \
+  results/ngsf_free_trial/experiment/benchmark_free_redshift.py \
+  run results/ngsf_free_trial --max-new-runs 5
+```
+
+This trial permits at most five fresh attempts, one worker, one numerical
+thread, and 2,400 seconds per fit. It retains the benchmark's 8 GiB raw-free
+reserve and 512 MiB output limit. Historical timings are unpaired and cannot
+establish speedup. `--max-new-runs 1` allows a checkpoint after each fit; a later
+invocation verifies and reuses completed attempts. It saves numerical arrays at
+`A_v=0`, `z=0`, `0.5` and `1` without thinning the search. Source campaigns,
+external engine/template assets and completed reference attempts are read-only.
+
+### Isolated JAX arithmetic test
+
+Create the optional overlay in the development worktree, using the existing
+engine environment's NumPy/SciPy without installing JAX into that environment:
+
+```bash
+conda activate spectypus
+python -m venv --system-site-packages .venv
+.venv/bin/python -m pip install -e '.[benchmark-jax]'
+PYTHONPATH="$PWD/src" python scripts/benchmarks/benchmark_jax.py prepare \
+  --fixed results/ngsf_core_trial --free results/ngsf_free_trial \
+  --output results/jax_trial
+PYTHONPATH="$PWD/src" nice -n 15 .venv/bin/python \
+  results/jax_trial/experiment/benchmark_jax.py run results/jax_trial
+PYTHONPATH="$PWD/src" python scripts/benchmarks/report_free_jax.py \
+  --free-root results/ngsf_free_trial --jax-root results/jax_trial \
+  --output results/jax_trial/report
+```
+
+Wait for the free-z worker to finish before the full JAX replay. The default
+trial covers 20 saved grid-point fixtures (five fixed-z and 15 free-z), using
+eight-template chunks, CPU-only JAX and five alternating-order timing pairs.
+It records transfer and first-call costs separately, synchronizes device work,
+and includes NumPy reuse with the same chunk size as a memory-locality control.
+Both NumPy variants must agree bit-for-bit with the extracted native arithmetic.
+The runner stops if measured warm CPU/wall exceeds 1.5. `NPROC=1`, disabled asynchronous
+CPU dispatch and single-thread flags limit work; the measured guard checks
+their effect. If it stops, retain that evidence and prepare a new trial with
+smaller `--chunk-templates`; do not overwrite the stopped trial.
+
+Float64 acceptance requires identical NaN/Inf masks, exact sample counts and
+ordered top-ten template/host indices, and finite coefficients/scores within
+`rtol=1e-9`, `atol=1e-10`. Float32 is a negative precision control. Synthetic
+cases also check strict overlap boundaries, negative coefficients, singular
+and nearly singular mixtures, and zero/tiny errors. The corrected prototype
+passes the sample count as a runtime divisor to preserve native overlap
+decisions; this does not make reduction ordering identical. A failed edge case
+blocks overall numerical acceptance even when real fixtures pass.
+
+This is arithmetic replay, not a JAX classifier or production configuration.
+It excludes interpolation, template loading, native-table reconstruction and
+whole-search ranking. The `benchmark-jax` extra pins the tested JAX release for
+the project's Python 3.10 runtime; it does not promise other backends or GPUs.
