@@ -17,9 +17,9 @@ EXAMPLE = {
     "free_redshift": {"min": 0.0, "max": 1.0, "step": 0.01},
     "engines": {
         "snid_sage": {"enabled": True, "python": "/path/to/classify/bin/python",
-                      "templates": "/path/to/SNID-SAGE/templates", "threshold": 1.5},
+                      "templates": "/path/to/SNID-SAGE/templates", "threshold": 1.5, "backend": "native"},
         "ngsf": {"enabled": True, "python": "/path/to/classify/bin/python",
-                 "root": "/path/to/NGSF", "parameters": "/path/to/NGSF/parameters.json"},
+                 "root": "/path/to/NGSF", "parameters": "/path/to/NGSF/parameters.json", "backend": "jax"},
     },
 }
 
@@ -79,20 +79,27 @@ def load_config(path: Path | dict) -> dict:
     engines = {}
     for name, original in result["engines"].items():
         cfg = dict(original)
-        allowed = {"enabled", "python", "templates", "threshold"} if name == "snid_sage" else {
-            "enabled", "python", "root", "parameters"}
+        allowed = {"enabled", "python", "templates", "threshold", "backend"} if name == "snid_sage" else {
+            "enabled", "python", "root", "parameters", "backend"}
         if set(cfg) - allowed:
             raise ValueError(f"unknown {name} configuration keys: {sorted(set(cfg) - allowed)}")
         if type(cfg.get("enabled", True)) is not bool:
             raise ValueError("engine enabled must be boolean")
         if not cfg.get("enabled", True):
             continue
+        cfg.setdefault("backend", "native" if name == "snid_sage" else "jax")
+        choices = {"native"} if name == "snid_sage" else {"native", "numpy", "jax"}
+        if cfg["backend"] not in choices:
+            raise ValueError(f"{name} backend must be one of {sorted(choices)}; JAX is currently supported only for NGSF")
         required = {"python", "templates"} if name == "snid_sage" else {"python", "root"}
         if not required.issubset(cfg):
             raise ValueError(f"{name} requires {sorted(required)}")
         for key in required | ({"parameters"} if "parameters" in cfg else set()):
             p = Path(cfg[key]).expanduser()
-            cfg[key] = str((base / p).resolve() if not p.is_absolute() else p.resolve())
+            p = base / p if not p.is_absolute() else p
+            # Resolving a venv's Python symlink selects the base environment
+            # and silently loses its isolated engine/JAX dependencies.
+            cfg[key] = str(p.absolute() if key == "python" else p.resolve())
         if name == "snid_sage":
             cfg["threshold"] = float(cfg.get("threshold", 1.5))
             if not math.isfinite(cfg["threshold"]) or cfg["threshold"] < 0:

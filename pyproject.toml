@@ -16,6 +16,7 @@ plots = ["matplotlib>=3.10,<4", "scipy>=1.15,<2", "SciencePlots>=2,<3", "pypalet
 dev = ["pytest>=7", "build>=1"]
 # Isolated CPU benchmark overlay for the project's Python 3.10 engine runtime.
 benchmark-jax = ["jax==0.6.2", "jaxlib==0.6.2", "ml_dtypes==0.5.1", "opt_einsum==3.4.0"]
+jax = ["jax==0.6.2", "jaxlib==0.6.2", "ml_dtypes==0.5.1", "opt_einsum==3.4.0"]
 web = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
 webtest = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "httpx>=0.27,<1"]
 engines = [
