@@ -120,26 +120,36 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for filename, payload in payloads.items():
         (args.output_dir / filename).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        label = 'tests passed' if filename == 'tests.json' else str(payload['label'])
         (args.output_dir / ('ci-'+filename.replace('.json','.svg'))).write_text(
-            render(label, str(payload['message']), str(payload['color']),
+            render(str(payload['label']), str(payload['message']), str(payload['color']),
                    f"{args.source_sha} · {args.run_url}"), encoding='utf-8')
     print(json.dumps({name: payload["message"] for name, payload in payloads.items()}))
 
 
 def render(label: str, message: str, color: str, source: str) -> str:
-    """Generate self-contained badges from reports, with their source in the SVG."""
-    colors = {'red':'#b91c1c','brightgreen':'#15803d','yellow':'#a16207',
-              'lightgrey':'#64748b','blue':'#0369a1'}
-    left, right = 14+7*len(label), 14+7*len(message)
+    """Render private report badges in the compact Shields flat style."""
+    colors = {'red':'#e05d44','brightgreen':'#4c1','yellow':'#dfb317',
+              'lightgrey':'#9f9f9f','blue':'#007ec6'}
+    left, right = 10+6*len(label), 10+6*len(message)
+    width = left+right
     title = escape(f'{label}: {message}. Source: {source}', quote=True)
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{left+right}" height="22" '
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="20" '
         f'role="img" aria-label="{title}"><title>{title}</title>'
-        f'<rect width="{left+right}" height="22" rx="3" fill="{colors[color]}"/>'
-        f'<path fill="#374151" d="M3 0H{left}V22H3Q0 22 0 19V3Q0 0 3 0"/>'
-        f'<g fill="white" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11" text-anchor="middle">'
+        '<linearGradient id="s" x2="0" y2="100%">'
+        '<stop offset="0" stop-color="#bbb" stop-opacity=".1"/>'
+        '<stop offset="1" stop-opacity=".1"/></linearGradient>'
+        f'<clipPath id="r"><rect width="{width}" height="20" rx="3"/></clipPath>'
+        '<g clip-path="url(#r)">'
+        f'<rect width="{left}" height="20" fill="#555"/>'
+        f'<rect x="{left}" width="{right}" height="20" fill="{colors[color]}"/>'
+        f'<rect width="{width}" height="20" fill="url(#s)"/></g>'
+        '<g fill="#fff" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" '
+        'font-size="11" text-anchor="middle" text-rendering="geometricPrecision">'
+        '<g fill="#010101" fill-opacity=".3" aria-hidden="true">'
         f'<text x="{left/2}" y="15">{escape(label)}</text>'
-        f'<text x="{left+right/2}" y="15">{escape(message)}</text></g></svg>\n')
+        f'<text x="{left+right/2}" y="15">{escape(message)}</text></g>'
+        f'<text x="{left/2}" y="14">{escape(label)}</text>'
+        f'<text x="{left+right/2}" y="14">{escape(message)}</text></g></svg>\n')
 
 
 if __name__ == "__main__":
