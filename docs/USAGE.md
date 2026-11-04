@@ -11,7 +11,7 @@ probabilities or secure scientific classifications.
 
 For current capabilities and evidence, read [validation](VALIDATION.md).
 The [roadmap](roadmap/SPECTYPUS_ROADMAP.md) tracks further results review,
-campaign-scale execution, scientific evaluation and later CI/badges.
+campaign-scale execution, scientific evaluation and release readiness.
 The [project index](PROJECT_INDEX.md) routes development documentation.
 The local results viewer is described in [RESULTS_VIEWER.md](RESULTS_VIEWER.md).
 
@@ -289,7 +289,9 @@ classification support; the observations and original plan provenance remain
 recorded. This detects changes at the checks rather than creating an immutable
 filesystem snapshot of external engines.
 
-Classifiers execute serially with streamed logs and a configurable timeout.
+The basic `spectypus run` command executes serially with streamed logs and a
+configurable timeout. The saved-campaign controller additionally supports
+bounded parallel workers; see [overnight operation](OVERNIGHT.md).
 Each has private parameters, staged input, output and cache directories. The
 shared NGSF configuration and original spectra are never edited. A process
 lock prevents simultaneous writers to the same output directory. Exit codes:
@@ -329,8 +331,34 @@ are kept under ignored `results/` directories.
 
 Deferred work: line/host-based redshift inference, spectrum reduction, FITS
 readers, classification calibration on held-out objects, treatment of correlated
-epochs and template-bank imbalance, and a review UI. No PyPI publication or
+epochs and template-bank imbalance, and human review annotations. The read-only
+review UI is already available. No PyPI publication or
 GitHub push is performed by local installation.
+
+### Continuous verification
+
+`.github/workflows/ci.yml` runs Python 3.10 on Linux using
+`.[dev,webtest,engines,jax,ci]`. It tests software behavior with synthetic data,
+builds the source distribution and wheel, and imports/runs the installed wheel
+in a fresh environment outside the checkout. No real spectra or template banks
+are loaded. Optional plot-style coverage and real-engine checks remain separate.
+The `ci` extra supplies coverage reporting; the core package stays dependency-free.
+
+JUnit, line-coverage XML and distribution files are downloadable from the
+[Actions run](https://github.com/sPaMFouR/spectypus/actions/workflows/ci.yml) as
+the private `ci-reports` artifact (14-day retention). Build/test/coverage badges
+are generated from those reports on trusted branch pushes and committed only
+to that tested branch under `assets/`. Their SVG titles include the source SHA
+and run URL. A badge is the last published report, not a claim that an in-flight
+or newer untested commit passed; use Actions for current checks. Runtime/license
+badges reflect `pyproject.toml` and `LICENSE`.
+
+PR jobs have read-only repository permissions. Badge publication needs no
+external endpoint or token secret, skips an advanced branch, and cannot turn
+passing tests into a failed build. GitHub's own bot commits do not start another
+workflow run. Report/collection failures cannot create a green passing-count
+badge; unavailable coverage stays unavailable. CI coverage is a software test
+metric and says nothing about classification accuracy or calibration.
 
 
 ## Telluric masks, model curves and overnight priority

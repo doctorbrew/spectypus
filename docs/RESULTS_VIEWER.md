@@ -63,8 +63,10 @@ alias/redshift evidence, configuration and plan are local under
 
 The controller `scripts/run_saved_campaign.py` starts with the shortest and
 longest eligible fixed/free inputs, then continues through every eligible fit.
-Those first attempts are real batch members, not extra votes. Execution is
-serial, numeric-library threads are limited to one, each fit has a 900-second
+Those first attempts are real batch members, not extra votes. This initial
+campaign ran serially; current bounded-worker operation is documented in
+[OVERNIGHT.md](OVERNIGHT.md). In this initial setup, numeric-library threads
+were limited to one, each fit had a 900-second
 timeout, and the controller stops below 20 GiB free disk or after six consecutive
 execution failures. Completed attempts remain resumable. A frozen runtime under
 `results/slsn_20261031/runtime/` isolates the running batch from development edits.

@@ -22,7 +22,7 @@ limitations. Probability calibration remains unimplemented; CI status is tracked
 | P3 | Measured, bounded execution at campaign scale | Bounded workers and guarded NGSF JAX validated; controlled throughput and safe loading caches next | P0; representative timing inputs |
 | P4 | Improve and calibrate evidence combination | Deferred until benchmark exists | P1 |
 | P5 | Line/host-assisted redshift hypotheses | Deferred | P1; redshift-labelled validation set |
-| P6 | Reproducible release and verified GitHub badges | CI and private report-derived badges prepared; remote verification pending | GitHub access; real CI reports |
+| P6 | Reproducible release and verified GitHub badges | Verified CI, wheel smoke and private report-derived badges; formal release pending | GitHub access; real CI reports |
 
 P1 and P2 can advance independently: a viewer is useful before accuracy is
 measured, provided it labels all automated classifications as proposals.
@@ -256,8 +256,9 @@ required. Pull requests run read-only checks. Publication skips an advanced
 branch; optional badge failures cannot turn passing tests into a failing build.
 Missing/failed/empty test reports cannot produce a green passing-count badge.
 
-Current acceptance: local tests and YAML checks run before publishing; actual
-step logs and generated remote badge values must be verified before marking
-CI complete. Package-registry publication, a release versioning policy and
+Verified remote acceptance: the Python 3.10 Linux run passed 167 tests with
+one optional plot-style skip, reported 72.1% line coverage, built both
+distributions and imported the installed wheel. Step logs and report-derived
+badge values were inspected; see [VALIDATION.md](../VALIDATION.md). Package-registry publication, a release versioning policy and
 broader supported-platform checks remain pending. No release or calibrated
 classification claim follows from green software tests.

@@ -13,7 +13,8 @@ real-engine checks additionally require the declared external inputs and banks.
 The initial implementation passed 83 regression tests covering ingestion,
 redshift routing, units/frames, native ranking, duplicates, support denominators,
 timeouts, resume, tampering, provenance drift, and SAGE optical-profile limits.
-The original evidence is in [results/validation.json](../results/validation.json).
+The original local evidence is in `results/validation.json` in the original
+development checkout; generated validation products are not distributed in Git.
 This is a historical test count, not an automatically refreshed badge.
 
 Its real-engine smoke used **two spectra of one supernova, SN 2022vxc**: both
@@ -37,8 +38,9 @@ classification successes or a representative accuracy sample.
   absence of model support is not a negative classification result.
 - Original error columns are recorded as ignored; engines use their native
   noise treatment. FITS input, line-derived redshifts and reduction are absent.
-- Execution is serial within a batch. No thousand-spectrum throughput or
-  memory claim has been measured.
+- The basic batch command is serial; the saved-campaign controller supports
+  bounded parallel workers. No thousand-spectrum throughput or memory claim
+  has been measured.
 - `spectypus review` provides a local read-only results website: progress,
   suggested-class counts, searchable objects, top native matches, and input
   spectra with verified source hashes. New runs can save native template overlays;
@@ -55,7 +57,7 @@ These repeat the same two-spectrum integration experiment, not an expanded
 accuracy study.
 
 Evidence is under `results/conda_validation/`: see the local
-[validation record](../results/conda_validation/validation.json), JUnit report,
+`results/conda_validation/validation.json` record, JUnit report,
 interpreter paths, conda/pip inventories, input/config hashes, attempt states
 and resume counts. The older
 `.venv` and `classify` evidence remains intact. The environment recipe pins the
@@ -526,3 +528,31 @@ hashes, frozen experiment files, unchanged engine source, and the same live
 SLSN PID, controller and plan. JAX remains absent from the shared conda
 environment. The package wheel includes the guarded module and pinned JAX extra;
 no package installation or campaign restart was performed.
+
+## GitHub CI and housekeeping verification (2026-11-04)
+
+The [first real CI run](https://github.com/sPaMFouR/spectypus/actions/runs/41868058808)
+tested commit `dad5e50` on Python 3.10/Linux. Its actual step logs report
+**167 passed, one skipped** (optional plot-style dependencies) and **72.1% line
+coverage** for `spectypus`. Both source distribution and wheel built successfully;
+the wheel imported from a fresh virtualenv's `site-packages` outside the checkout
+and its CLI help ran. The unit suite includes synthetic JAX checks, not access
+to real external template banks. Coverage includes unexercised bridge paths;
+it is not a classification-accuracy measure.
+
+The publisher generated build/test/coverage SVGs from this run's JUnit and
+coverage reports and committed them as `c515d34`. All three SVGs identify the
+tested SHA and Actions run. No public metrics resource or extra secret was
+created. Missing/malformed/failed/all-skipped reports, nested-suite counting
+and SVG escaping/provenance have dedicated regression checks. Badge-only
+failures are isolated from the test job's real result.
+
+Local housekeeping checks passed 157 tests with 11 optional dependency skips.
+All local Markdown file links and heading anchors were checked; two references
+to ignored historical products are now explicitly labelled local evidence.
+Only disposable build/pytest/bytecode caches in the isolated worktree were
+removed. The six established content folders remain, plus `.github/` for CI;
+all scientific products remain under ignored `results/`. Benchmarks, frozen
+attempts, active campaigns, environments and the main checkout's six pre-existing
+edits were preserved. Detailed audit/log/report copies are saved under
+`results/housekeeping_20261104/`.

@@ -356,3 +356,17 @@ and skips branches that advanced during a run. No external metric endpoint or
 credential is introduced. Local verification: 157 passed, 11 optional skips;
 failure/collection/missing-report and SVG provenance tests pass. Remote CI and
 badge verification follow the first push; no green badge is added in advance.
+
+Remote verification completed: Actions run `41868058808` passed 167 tests with
+one optional plot-style skip and 72.1% line coverage. Both distributions and the
+fresh installed-wheel smoke passed. Inspected actual step logs, downloaded the
+reports and verified automatic SVG publication in `c515d34`; then linked the
+real badges from README. Runtime/license badges reflect existing package
+metadata/license. No public metrics endpoint was created.
+
+Removed only disposable build/pytest/bytecode caches in the isolated worktree.
+All local documentation links and heading anchors now resolve; historical local
+result paths are explicitly labelled rather than linked as distributed files.
+Corrected stale serial-only/deferred-viewer wording. Original spectra, saved
+attempts, benchmark tools, environments, active campaigns and the original main
+checkout's six pre-existing edits were preserved.

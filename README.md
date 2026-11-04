@@ -4,6 +4,12 @@
 
 # Spectypus
 
+[![Python](assets/python.svg)](pyproject.toml)
+[![Build](assets/ci-build.svg)](https://github.com/sPaMFouR/spectypus/actions/workflows/ci.yml)
+[![Tests](assets/ci-tests.svg)](https://github.com/sPaMFouR/spectypus/actions/workflows/ci.yml)
+[![Coverage](assets/ci-coverage.svg)](https://github.com/sPaMFouR/spectypus/actions/workflows/ci.yml)
+[![License](assets/license.svg)](LICENSE)
+
 Spectypus brings **SNID-SAGE and NGSF** into one workflow for classifying
 collections of reduced supernova spectra. It organizes results by supernova,
 so you can compare template matches across epochs and classifiers and inspect
@@ -70,25 +76,17 @@ While a campaign is active, use a separate environment as described in
 
 ## Fitting backends
 
-NGSF defaults to **guarded JAX float64 on CPU**. Set `engines.ngsf.backend` to
-`"native"` for the original core or `"numpy"` for exact NumPy arithmetic in
-small template blocks. The JAX path recomputes unstable mixtures and candidate
-contenders with native NumPy before writing native results. Missing JAX falls
-back to NumPy; an unrecognized NGSF source retains the native core. Each attempt
-saves its requested/effective backend and fallback reason in `backend.json`.
+NGSF defaults to **guarded JAX float64 on CPU**, with `engines.ngsf.backend`
+choices `"numpy"` and `"native"` also available. Native rechecks preserve candidate
+scores; missing JAX falls back to NumPy and unknown NGSF source stays native.
+Attempts record the effective backend and fallback reason in `backend.json`.
+[Backend configuration and isolation](docs/USAGE.md#fitting-backends).
 
-SNID-SAGE retains its **native vectorized FFT backend**: a separate five-spectrum
-trial took **133.1 s natively versus 138.1 s with experimental JAX FFTs** (about
-4% longer), with identical results. Its FFT stage is already a small part of
-the total; switching it to JAX did not save time. GPU acceleration is untested.
-
-**Measured complete-fit time:** five fixed-redshift spectra took **148.7 s with
-native NGSF** and **135.2 s with guarded JAX** in the integration trial: **13.5 s
-saved, about 9% less time (1.10× faster overall)**. This is one run per spectrum
-and backend under concurrent load, not a guaranteed campaign speedup. The
-earlier **5.78×** result measured warmed prototype arithmetic only; it excluded
-startup, template loading, output construction and native rechecks. See
-[validation and timing scope](docs/VALIDATION.md) for the full evidence.
+Five fixed-redshift fits took **148.7 s natively versus 135.2 s with guarded
+JAX**: **9.1% less time (1.10×)** in one trial under shared load. Arithmetic-only
+benchmarks do not predict campaign speedup. SNID-SAGE retains native FFTs:
+its separate JAX trial was about **4% slower** with identical results.
+[Evidence and timing limitations](docs/VALIDATION.md). GPU acceleration is untested.
 
 ## Run a batch
 
@@ -140,6 +138,9 @@ in `docs/`, input examples in `examples/`, and graphics in `assets/`. GitHub
 automation lives in `.github/`. Generated scientific evidence stays in ignored
 `results/`; environments and Python build/cache files are also excluded from Git.
 See the [project index](docs/PROJECT_INDEX.md) for documentation ownership.
+CI badges are generated from actual reports on trusted pushes; their SVGs
+record the source commit/run. Coverage measures software tests, not scientific
+classification accuracy. [CI scope and reports](docs/USAGE.md#continuous-verification).
 
 **Scope:** reduced spectra, batch classification and local review. Raw-data
 reduction and accuracy measurements against independent labels are future work.

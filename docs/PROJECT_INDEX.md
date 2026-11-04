@@ -9,6 +9,7 @@ This file routes readers to the owner of each topic; it is not a history log.
 | Logo, workflow graphic and generation prompt | [assets/README.md](../assets/README.md) | Reusing or editing the visual assets |
 | Conda recipe | [environment.yml](../environment.yml) | Creating the dedicated environment |
 | Package/runtime dependencies | [pyproject.toml](../pyproject.toml) | Changing installation requirements |
+| CI reports, private badges and verification scope | [USAGE.md](USAGE.md#continuous-verification), [workflow](../.github/workflows/ci.yml) | Checking automated tests/builds or badge freshness |
 | Verified behavior and scientific limitations | [VALIDATION.md](VALIDATION.md) | Assessing how well the pipeline works |
 | ZTF priority, masking, fit overlays and overnight launch | [OVERNIGHT.md](OVERNIGHT.md) | Running or reviewing the current masked campaign |
 | Provisional Fritz batch and frame assumptions | [FRITZ_BATCH.md](FRITZ_BATCH.md) | Running or reviewing the supplementary Fritz fits |
