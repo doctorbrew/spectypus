@@ -173,6 +173,9 @@ def main(argv: list[str] | None = None) -> int:
         return 64
 
     original = identify.run_snid_analysis
+    _atomic_json(args.candidate_json.with_name('backend.json'), {
+        'schema': 'spectypus-backend/1', 'requested': 'native', 'effective': 'native',
+        'implementation': 'SNID-SAGE vectorized FFT', 'snid_sage_version': version})
     original_preprocess = identify.preprocess_spectrum
     captured = False
 

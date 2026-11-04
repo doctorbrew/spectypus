@@ -178,18 +178,32 @@ The five-spectrum follow-up now validates intermediate reuse across the full
 free-redshift grid: all 20,705 grid points ran, with exact native results and
 saved artifacts. On 20 saved fixed/free-z `A_v=0` fixtures, blocked NumPy reuse
 is bit-for-bit exact and measures a median 2.034× arithmetic CPU ratio. JAX
-float64 measures 5.779× and passes all 20 real-fixture checks, but fails two
-nearly singular stress cases; float32 fails all 20 precision checks. JAX remains
-experimental and is not ready for production. These replay ratios exclude
-interpolation, loading and native-table reconstruction.
+float64 measures 5.779× and passes all 20 real-fixture checks, but its unrestricted
+prototype fails two nearly singular stress cases; float32 fails all 20 precision
+checks. These replay ratios exclude interpolation, loading and native-table
+reconstruction and do not describe the guarded backend below.
 
-Next acceptance work: validate additional native versions and introduce any
-intermediate-reuse integration behind an explicit opt-in with source-version
-checks. Test blocked NumPy arithmetic in full fits before promoting it. For
-JAX, add and validate native handling of ill-conditioned mixtures, then extend
-to extinction variation and full-search ranking. Measure cold/warm startup and
-template loading separately. No new backend, shared mutable cache or relaxed
-provenance check is enabled by these experiments.
+NGSF now defaults to a guarded float64 CPU JAX backend for future plans, with
+explicit `native` and blocked `numpy` choices. Native NumPy rechecks unstable
+mixtures and candidate contenders. The tested source hash and JAX version are
+required; unsupported installations fall back visibly in `backend.json`.
+The eight numerical stress cases pass, and returned top-ten values on all 20
+saved real fixtures are exactly native. Full fixed-z native/NumPy/JAX fits on
+the five copied spectra preserve candidates and saved scientific artifacts.
+Five full free-z JAX fits also preserve native results across all 20,705 grid
+points, including every extinction value and redshift-grid record.
+Their observed total time is 148.7 s native versus 135.2 s JAX (1.10×, 9% less
+time) for the fixed-z comparison, with one observation per pair under concurrent
+load. Historical free-z references do not support a paired speedup claim.
+
+Next acceptance work: expand beyond five spectra and the tested native source,
+measure repeatability on an idle machine, and profile startup/template loading
+separately from arithmetic. A separate five-spectrum fixed-z SAGE trial preserves
+all results but takes 138.1 s with JAX FFTs versus 133.1 s natively. Native FFT
+calls consume only 0.269 s across those five fits, so SAGE retains its native
+default. Profile its initialization/template loading and downstream analysis
+before choosing further acceleration work. SAGE free-z JAX, GPU execution and
+float32 remain unvalidated. No active campaign or shared environment is changed.
 
 ## P4 — evidence combination and calibration
 

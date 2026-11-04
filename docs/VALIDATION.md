@@ -420,3 +420,109 @@ dependency skips and one existing Starlette/httpx deprecation warning. The
 isolated JAX environment passed all five kernel unit tests, including the
 strict decimal-overlap regression (rechecked on 2026-11-04). These unit-test
 passes do not override the two failed numerical stress cases above.
+
+## Guarded backend integration (2026-11-04)
+
+The installed NGSF adapter now offers `native`, `numpy`, and JAX-preferred
+`jax` execution for future plans. This is a different implementation from the
+unrestricted JAX replay above: it falls back on numerical risk and recomputes
+candidate contenders with native NumPy before native table construction.
+SNID-SAGE continues to use its native vectorized FFT implementation; no SAGE
+JAX speed claim is made.
+
+The numerical guards cover determinant conditioning, coefficient cancellation,
+near-perfect residuals, extreme inputs and zero/tiny errors. Candidates within
+`1e-6 * abs(cutoff) + 1e-10` of the current cutoff are rechecked, including all
+ties, until the selected set is stable. This margin is deliberately wider than
+the earlier `rtol=1e-9`, `atol=1e-10` fixture criteria. Unknown NGSF source
+hashes retain the native core. Missing/unsupported JAX uses NumPy; a JAX runtime
+exception records its reason and switches the rest of the fit to NumPy.
+
+All eight synthetic numerical stress cases now agree exactly, including the
+two previously failing nearly singular cases. On the 20 saved real fixtures,
+all six output arrays satisfy the earlier numerical criteria and the selected
+top-ten numerical values are bit-for-bit native. Evidence:
+`results/ngsf_guarded_replay_20261104/results.json`. Tests also exercise backend
+identity separation, missing/runtime-failing JAX, source-version fallback,
+near-tie reordering and preservation of virtualenv Python symlinks.
+
+The bounded real-engine experiment in `results/ngsf_backend_integration_20261104/`
+uses a new frozen runtime, the same five copied spectra, one nice-15 worker and
+single-thread numerical settings. Fifteen fixed-z fits rotate the order of
+`native`, `numpy`, and `jax` across spectra. Five additional JAX full free-z
+fits compare to copied, verified historical native references. Each fit has a
+1,800-second timeout and dispatch requires 8 GiB raw free disk. No active
+campaign, external engine source, template bank or shared environment is edited.
+
+The ten fixed-z comparisons to native are exact for statuses, candidates,
+native CSVs, fit curves, masks and staged inputs. Their recorded attempt totals
+are 148.67 s native, 153.28 s NumPy and 135.17 s guarded JAX. The JAX total is
+13.50 s lower (9.08% less time, a 1.100× ratio); the median per-spectrum ratio
+is 1.078×. This is one rotated timing pair per spectrum under changing shared
+load, not a controlled throughput estimate. A NumPy attempt took 46.63 s while
+the same spectrum's native/JAX attempts took about 29 s, illustrating that
+startup/load variation can dominate these short fits. Recorded attempt time
+includes startup and runtime verification but excludes planning/final hashing.
+
+All five full free-z fits also agree exactly with verified native references
+for statuses, candidates, native CSVs, curves, masks, staged inputs and redshift
+grid records. Every fit executed 101 redshifts × 41 extinction values: **20,705
+JAX grid calls** in total, with no backend-level fallback. Risky/candidate SN
+columns were rechecked against every host using native NumPy. No template or
+search-grid pruning was introduced. The five JAX times were 275.60, 249.41,
+248.38, 249.29 and 254.08 s. Historical native references establish equivalence,
+not a paired free-z speedup. `complete.json` records all 15 comparisons.
+
+The frozen integration runtime precedes a metadata-only correction that marks
+`native_candidate_rechecks` true only when JAX is loaded, plus rejection of
+unsupported backend names; the tested arithmetic is unchanged. The final core
+suite passes **149 tests**, with 11 optional skips and one existing dependency
+deprecation warning. All **21 backend/kernel tests** pass in the isolated JAX
+environment. CLI-generated defaults and the normalized example config agree.
+
+These checks cover five spectra, one native source hash, CPU float64 and the
+recorded library versions. They do not establish universal numerical equivalence,
+calibrated classification accuracy, GPU behavior or a guaranteed speedup.
+
+## SNID-SAGE FFT decision (2026-11-04)
+
+`results/sage_fft_five_20261104_v2/` contains ten new fixed-z fits on the same
+five copied spectra, alternating native and experimental JAX complex128 FFT
+order. A frozen subprocess-only hook replaces the three cross-power/filter/
+inverse-FFT assignments in SNID-SAGE 1.2.3's vectorized correlator. Template
+selection, preprocessing, peak finding, redshift logic, thresholds, clustering
+and output construction remain native. The hook verifies the integration
+source hash; it does not edit installed SAGE or its template bank. The bound
+is one nice-15 worker, 600 seconds per fit, and an 8 GiB raw disk reserve.
+
+All five comparisons preserve status and parsed candidates exactly; full
+candidate JSON, fit curves, masks and staged spectra are byte-identical.
+However, JAX **does not improve this workload**:
+
+| Stage, total for five fits | Native FFT | Experimental JAX FFT |
+| --- | ---: | ---: |
+| Complete recorded attempts | 133.139 s | 138.081 s |
+| Correlation FFT calls, including first-shape compilation | 0.269 s | 2.039 s |
+| Backend initialization/import | <0.001 s | 1.333 s |
+
+Each side ran 95 correlation calls. Native FFT arithmetic accounts for about
+0.20% of its complete attempt time. The observed full-fit difference is 4.94 s
+(3.71% more time with JAX). These are one alternating observation per spectrum
+under shared load; they establish no general slowdown factor. They provide no
+reason to promote this JAX substitution as a time-saving default. **Production
+SAGE remains native**; the experimental hook is confined to the benchmark
+script. Free-z SAGE, persistent-process JIT reuse and GPU FFTs are untested.
+Profiling initialization, template loading and downstream analysis is a better
+next step than substituting this small FFT stage.
+
+The initial preparation directory without `_v2` is retained but was never run:
+it imported the main checkout through the editable installation. Preparation
+now rejects a source checkout mismatch before creating an experiment. The
+corrected trial explicitly freezes this worktree's source.
+
+The final isolation audit in `results/backend_audit_20261104/isolation.json`
+verifies all 30 new attempts and five native references, original/copied input
+hashes, frozen experiment files, unchanged engine source, and the same live
+SLSN PID, controller and plan. JAX remains absent from the shared conda
+environment. The package wheel includes the guarded module and pinned JAX extra;
+no package installation or campaign restart was performed.

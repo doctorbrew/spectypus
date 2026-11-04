@@ -4,19 +4,28 @@
 
 # Spectypus
 
-**Many spectra. Multiple classifiers. One supernova.**
-
-Spectypus classifies batches of **already reduced supernova spectra** with
-SNID-SAGE and NGSF. It saves the top ten matches for each spectrum and combines
-evidence across epochs into one reviewable assessment per supernova.
+Spectypus brings **SNID-SAGE and NGSF** into one workflow for classifying
+collections of reduced supernova spectra. It organizes results by supernova,
+so you can compare template matches across epochs and classifiers and inspect
+the evidence behind each proposed classification.
 
 ## Why use it?
 
-Replace repeated per-spectrum commands, manual redshift settings and spreadsheet
-collation with one input table and one resumable batch. Spectypus routes known/unknown
-redshifts, collects native scores, flags disagreements and avoids counting exact
-duplicate spectra twice. Verified completed fits are reused after interruption.
-**It saves orchestration and bookkeeping; no speedup factor has been benchmarked.**
+With several spectra of an object, a candidate list from one fit is only part
+of the picture. Spectypus helps you review the full set:
+
+- **Compare classifications across epochs.** See which classes receive support,
+  where the classifiers disagree, and which spectra remain unclassified.
+- **Inspect the underlying fits.** Keep native scores, redshift assumptions and
+  the top ten matches per classifier and search mode by default, with saved
+  fit overlays available in the local viewer.
+- **Keep track of incomplete evidence.** Failed runs, unsupported inputs and
+  searches with no good match remain distinct. Exact duplicate spectra do not
+  receive extra weight in the combined assessment.
+
+One input table drives the batch. Known redshifts can be held fixed; missing
+redshifts trigger a search. Interrupted batches resume from verified completed
+fits, keeping the results available for inspection as the campaign progresses.
 
 ## How it works
 
@@ -50,6 +59,36 @@ Already set up? Activate `spectypus` and skip creation/init. In the JSON, set bo
 engines’ `python` paths to the interpreter printed by
 `python -c 'import sys; print(sys.executable)'`; set SAGE’s `templates` and NGSF’s
 `root`/`parameters`. **Template banks and the NGSF checkout are external.**
+
+The conda recipe includes the tested engine stack and **JAX/jaxlib 0.6.2** for
+CPU float64 fitting. Dependencies are declared in `pyproject.toml`: `engines`
+for the classifiers, `jax` for NGSF acceleration, `web` for the viewer, and
+`dev` for tests. The Spectypus core itself has no third-party runtime dependency.
+For an existing idle environment, install `python -m pip install -e '.[engines,jax,web]'`.
+While a campaign is active, use a separate environment as described in
+[backend setup](docs/USAGE.md#fitting-backends).
+
+## Fitting backends
+
+NGSF defaults to **guarded JAX float64 on CPU**. Set `engines.ngsf.backend` to
+`"native"` for the original core or `"numpy"` for exact NumPy arithmetic in
+small template blocks. The JAX path recomputes unstable mixtures and candidate
+contenders with native NumPy before writing native results. Missing JAX falls
+back to NumPy; an unrecognized NGSF source retains the native core. Each attempt
+saves its requested/effective backend and fallback reason in `backend.json`.
+
+SNID-SAGE retains its **native vectorized FFT backend**: a separate five-spectrum
+trial took **133.1 s natively versus 138.1 s with experimental JAX FFTs** (about
+4% longer), with identical results. Its FFT stage is already a small part of
+the total; switching it to JAX did not save time. GPU acceleration is untested.
+
+**Measured complete-fit time:** five fixed-redshift spectra took **148.7 s with
+native NGSF** and **135.2 s with guarded JAX** in the integration trial: **13.5 s
+saved, about 9% less time (1.10× faster overall)**. This is one run per spectrum
+and backend under concurrent load, not a guaranteed campaign speedup. The
+earlier **5.78×** result measured warmed prototype arithmetic only; it excluded
+startup, template loading, output construction and native rechecks. See
+[validation and timing scope](docs/VALIDATION.md) for the full evidence.
 
 ## Run a batch
 

@@ -302,3 +302,39 @@ tests passed. The two numerical stress-case failures remain explicit blockers
 for JAX production use. Rechecked that the original SLSN PID, controller and
 plan remain active and unchanged. Completed classification experiments were
 not rerun. Changes remain local to `perf/ngsf-five-spectrum-cache`.
+
+## 2026-11-04 — guarded NGSF default and independent SAGE FFT decision
+
+Added `jax`, `numpy` and `native` NGSF backend choices, defaulting future plans
+to guarded CPU float64 JAX. Native NumPy rechecks ill-conditioned mixtures,
+cancellation-sensitive/near-perfect fits and candidate contenders. Source and
+JAX-version checks prevent applying the transformation to untested code;
+`backend.json` records the effective implementation, fallback reason and counts.
+Missing/unsupported JAX falls back to blocked NumPy; unknown NGSF source remains
+native. Search grids, native scores, masks and table construction are retained.
+The eight numerical stress cases pass, including both earlier JAX failures.
+
+Fixed virtualenv Python path handling so symlinks retain their isolated
+environment. Added the pinned `jax` extra to the fresh conda recipe and documented
+an isolated overlay for future fits while campaigns remain active. The README
+now explains the backend choices, dependencies and measured timing scope.
+
+Twenty bounded NGSF fits on five copied spectra preserve every tested native
+candidate/status/artifact comparison, including all 20,705 free-z grid points.
+Fixed-z totals are 148.7 s native and 135.2 s guarded JAX: 13.5 s saved, 9.08%
+less time (1.10×) in this trial under concurrent load. The older 5.78× arithmetic
+ratio is not a full-fit performance claim. Historical free-z references support
+equivalence but no paired speedup estimate.
+
+Separately tested native versus experimental JAX FFTs in ten fixed-z SNID-SAGE
+fits. All scientific comparisons are exact, but totals are 133.1 s native versus
+138.1 s JAX. Native FFT calls take just 0.269 s across five fits. SAGE therefore
+keeps its native default; the experimental hook is not exposed as a production
+backend. Loading/initialization and downstream work need profiling first.
+
+Validation: 149 core tests passed, 11 optional skips; all 21 isolated JAX
+backend/kernel tests passed; CLI/example defaults and wheel contents verified.
+The isolation audit verifies all 30 attempts and the unchanged live SLSN
+controller/plan, source spectra and engine sources. Shared packages and active
+campaigns remain untouched. PR #1 had been merged, so this follow-up uses
+`perf/guarded-jax-default` based on the updated remote `main`.

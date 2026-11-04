@@ -88,21 +88,31 @@ def install_masks(functions, windows, report_path, curve_path=None, top_n=10):
 
 
 def main():
-    import numpy as np
-    np.math = math
     target, parameters = sys.argv[1:3]
     mask_path = Path(sys.argv[3]) if len(sys.argv) > 3 else None
+    settings = json.loads(mask_path.read_text()) if mask_path else {}
+    backend = settings.get('backend', 'native')
+    # Import the sibling module from this exact launcher checkout/runtime.
+    sys.path.insert(0, str(Path(__file__).parent))
+    from ngsf_backend import configure_cpu, install
+    if backend != 'native':
+        configure_cpu()
+    import numpy as np
+    np.math = math
     sys.path.insert(0, os.path.dirname(target))
     sys.argv = [target, parameters]
     save_curves = lambda: None
-    if mask_path:
-        settings = json.loads(mask_path.read_text())
-        windows = settings["telluric_windows"]
-        from NGSF import SF_functions as functions
+    from NGSF import SF_functions as functions
+    report = install(functions, backend)
+    windows = settings.get('telluric_windows', [])
+    if windows or settings.get('save_fit_curves'):
         save_curves = install_masks(functions, windows, mask_path.with_name("mask_applied.json"),
             mask_path.with_name("fit_curves.json") if settings.get("save_fit_curves") else None, settings.get("top_n", 10))
-    runpy.run_path(target, run_name="__main__")
-    save_curves()
+    try:
+        runpy.run_path(target, run_name="__main__")
+        save_curves()
+    finally:
+        Path(parameters).with_name('backend.json').write_text(json.dumps(report, indent=2) + '\n')
 
 
 if __name__ == "__main__":
