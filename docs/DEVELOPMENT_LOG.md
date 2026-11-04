@@ -370,3 +370,9 @@ result paths are explicitly labelled rather than linked as distributed files.
 Corrected stale serial-only/deferred-viewer wording. Original spectra, saved
 attempts, benchmark tools, environments, active campaigns and the original main
 checkout's six pre-existing edits were preserved.
+
+The branch-publishing trial exposed an approval-required PR run for the badge
+bot commit. Restricted automatic publication to the default branch so PR checks
+remain read-only and badge commits cannot advance their review head. Existing
+badges retain their verified source SHA/run; after merge, `main` pushes update
+them automatically. No workflow approval or repository permission was bypassed.

@@ -248,8 +248,9 @@ coverage reports, distribution builds and an installed-wheel smoke check.
 It uses no external spectrum or template bank. Plot-style and real-engine
 integration coverage remain separate from this suite.
 
-Build, tests-passed and coverage SVGs are generated from each trusted push's
-actual reports and committed only to that tested branch under `assets/`.
+Build, tests-passed and coverage SVGs are generated from trusted default-branch
+push reports and committed under `assets/` on that branch. PRs publish artifacts
+without bot commits; the initial badge snapshot comes from the verified trial.
 Each SVG records the source commit and Actions run. Metrics stay inside this
 private repository; no public gist, Shields endpoint or new credential is
 required. Pull requests run read-only checks. Publication skips an advanced

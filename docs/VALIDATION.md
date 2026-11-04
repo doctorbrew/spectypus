@@ -556,3 +556,8 @@ all scientific products remain under ignored `results/`. Benchmarks, frozen
 attempts, active campaigns, environments and the main checkout's six pre-existing
 edits were preserved. Detailed audit/log/report copies are saved under
 `results/housekeeping_20261104/`.
+
+The initial branch-publishing trial also triggered an approval-required PR run
+on a bot commit. The final policy restricts automatic badge commits to the
+default branch; feature branches and PRs retain test/report artifacts without
+bot writes. The checked-in initial snapshot still identifies the real trial.

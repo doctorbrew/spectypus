@@ -347,8 +347,8 @@ The `ci` extra supplies coverage reporting; the core package stays dependency-fr
 JUnit, line-coverage XML and distribution files are downloadable from the
 [Actions run](https://github.com/sPaMFouR/spectypus/actions/workflows/ci.yml) as
 the private `ci-reports` artifact (14-day retention). Build/test/coverage badges
-are generated from those reports on trusted branch pushes and committed only
-to that tested branch under `assets/`. Their SVG titles include the source SHA
+are generated from those reports on trusted default-branch pushes and committed
+under `assets/` on that branch. PRs upload reports without bot commits. Their SVG titles include the source SHA
 and run URL. A badge is the last published report, not a claim that an in-flight
 or newer untested commit passed; use Actions for current checks. Runtime/license
 badges reflect `pyproject.toml` and `LICENSE`.

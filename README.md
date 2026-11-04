@@ -138,7 +138,7 @@ in `docs/`, input examples in `examples/`, and graphics in `assets/`. GitHub
 automation lives in `.github/`. Generated scientific evidence stays in ignored
 `results/`; environments and Python build/cache files are also excluded from Git.
 See the [project index](docs/PROJECT_INDEX.md) for documentation ownership.
-CI badges are generated from actual reports on trusted pushes; their SVGs
+CI badges update from actual reports on `main` pushes; their SVGs
 record the source commit/run. Coverage measures software tests, not scientific
 classification accuracy. [CI scope and reports](docs/USAGE.md#continuous-verification).
 

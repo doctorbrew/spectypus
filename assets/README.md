@@ -15,7 +15,7 @@ scientific contracts in `docs/USAGE.md`, not in this asset record.
 - `python.svg` and `license.svg`: static badges for the package's declared
   Python floor and existing GPLv3 license.
 - `ci-build.svg`, `ci-tests.svg`, `ci-coverage.svg`: automatically generated
-  from trusted GitHub Actions reports, with source SHA/run URLs inside the SVG.
+  from trusted default-branch GitHub Actions reports, with source SHA/run URLs inside the SVG.
   Do not hand-edit metric values. These remain private with the repository;
   no external badge endpoint is used. See [CI scope](../docs/USAGE.md#continuous-verification).
 
