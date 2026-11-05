@@ -1,6 +1,9 @@
 include environment.yml
 include AGENTS.md
-recursive-include docs *.md
+include CONTRIBUTING.md
+include .github/workflows/ci.yml
+recursive-include docs *.md *.bib
 recursive-include examples *.md *.json *.csv
 recursive-include assets *.png *.svg *.md
 recursive-include scripts *.py *.sh
+global-exclude *.local.md

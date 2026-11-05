@@ -1,5 +1,6 @@
 .venv/
 .venv-plots/
+.venv-*/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -24,3 +25,12 @@ results/
 *.npy
 *.pkl
 *.pt
+
+# Local AI sessions, personal settings and scratch work (shared AGENTS.md stays tracked).
+/.codex/
+/.claude/
+/.ai-local/
+*.local.md
+/.aider.chat.history.md
+/.aider.input.history
+/.aider.tags.cache*/
