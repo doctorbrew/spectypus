@@ -4,11 +4,12 @@ This guide covers setup, a first batch, and how to interpret its results.
 The [README](../README.md) provides the quick start.
 
 Reporting currently uses the source-checkout exporters documented in
-[RESULTS_VIEWER.md](RESULTS_VIEWER.md). The next packaging step will expose two
-display modes: **SpectralAtlas** for large samples and **Classification Report**
-for a night's folder or small batch of spectra. Both will read the same saved
-typing evidence. These packaged display selectors are planned, not current CLI
-options; acceptance criteria live in the [roadmap](roadmap/SPECTYPUS_ROADMAP.md).
+[RESULTS_VIEWER.md](RESULTS_VIEWER.md): **SpectralAtlas** provides large-sample
+navigation, and **Classification Report** provides a continuous, EFOSpec-style
+page for a small selection of saved spectra. The report embeds existing master
+JPGs and evidence downloads without rerendering. Installed-package integration,
+direct nightly-folder reporting and the package CLI display selector remain
+planned; acceptance criteria live in the [roadmap](roadmap/SPECTYPUS_ROADMAP.md).
 
 ## Install
 

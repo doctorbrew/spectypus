@@ -1,0 +1,22 @@
+/* Classification Report: normal document flow, following the EFOSpec night report. */
+.report-summary { margin: 12px 0 24px; }
+.report-nav { margin: 24px 0 20px; }
+.report-spectrum { scroll-margin-top: 20px; }
+.report-spectrum h3 { margin-bottom: 8px; }
+.report-meta { margin: 6px 0; color: var(--muted); font-size: 13px; }
+.report-fits { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.report-fits > .fit-card { min-width: 0; margin-top: 12px; padding-top: 12px; }
+.report-fits h4 { margin: 0 0 10px; }
+.report-fits .table-wrap { margin-top: 16px; }
+.report-fits th, .report-fits td { padding: 8px 10px; }
+.report-fits figcaption details { margin: 8px 0 0; }
+.report-fits .downloads { margin: 12px 0; }
+.report-back { font-size: 12px; }
+@media (max-width: 800px) {
+  .report-fits { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+@media print {
+  .report-nav, .report-back, .downloads, dialog { display: none; }
+  .report-fits { display: block; }
+  .fit-card { break-inside: avoid; }
+}

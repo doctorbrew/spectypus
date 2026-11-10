@@ -193,7 +193,8 @@ def browser_page(title, body, frozen, objects, selected, prefix):
     return html.replace('</body>', '<script>' + (ASSETS / 'browser.js').read_text() + '</script></body>', 1)
 
 
-def fit_card(run, results, prefix, curve_notes=(), locations=None):
+def fit_card(run, results, prefix, curve_notes=(), locations=None, *, asset_url=None, compact=False):
+    url = asset_url or (lambda name: prefix + name)
     engine = 'NGSF' if run['engine'] == 'ngsf' else 'SNID-SAGE'
     heading = f'{engine} · {run["mode"]}-z'
     body = f'<section class="fit-card" data-execution="{h(run["execution_id"])}" data-engine="{h(run["engine"])}" data-mode="{h(run["mode"])}"><h4>' + h(heading) + ' ' + badge(run['status']) + '</h4><p class="muted">' + ('Primary evidence' if run['primary'] else 'Diagnostic fit; excluded from primary support') + '</p>'
@@ -204,6 +205,9 @@ def fit_card(run, results, prefix, curve_notes=(), locations=None):
     result = results.get(run['plot_key'])
     if result and result['status'] == 'ready':
         title = f'{run["object_id"]} / {heading}: best {len(run["matches"])} saved native candidates'
+        figure_url = h(url('figures/' + result['jpg']))
+        image_download = f'download="{h(result["jpg"])}"' if asset_url else 'target="_blank" rel="noopener"'
+        image_label = 'Download JPG' if asset_url else 'Open JPG'
         panels = [p for p in result['panels'] if p['status'] == 'rendered']
         smoothing_note = ''
         if panels and 'savgol_filtered_samples' in panels[0]:
@@ -215,7 +219,9 @@ def fit_card(run, results, prefix, curve_notes=(), locations=None):
         if offscale:
             smoothing_note += f' {offscale} saved model(s) lie entirely outside the observed-spectrum y-range and are labelled in their panels; their native arrays are unchanged.'
         smoothing_note += f' Robust y-limits place {clipped} raw input samples outside the visible range; all samples remain in the numerical download.'
-        body += f'<figure><button class="enlarge" type="button" aria-label="Enlarge {h(title)}"><img src="{prefix}figures/{result["jpg"]}" loading="lazy" alt="{h(title)}"></button><figcaption>Up to six ranked matches: full input observations in black, raw input in grey (alpha 0.2), and coral models restored to input flux units. Legends give the target and matched SN names, the matched template’s native type, and recorded phases. Unknown or ambiguous target phases are explicit. Short grey bars mark telluric intervals; observed samples there are retained. Matched models are displayed through the excluded fit bands without a display mask; original template coverage still limits their wavelength extent. Dotted lines: catalogue-z host positions.{h(smoothing_note)}</figcaption></figure><div class="downloads"><a href="{prefix}figures/{result["jpg"]}" target="_blank" rel="noopener">Open JPG · 300 dpi</a></div>'
+        body += f'<figure><button class="enlarge" type="button" aria-label="Enlarge {h(title)}"><img src="{figure_url}" loading="lazy" alt="{h(title)}"></button><figcaption>Up to six ranked matches: full input observations in black, raw input in grey (alpha 0.2), and coral models restored to input flux units. Legends give the target and matched SN names, the matched template’s native type, and recorded phases. Unknown or ambiguous target phases are explicit. Short grey bars mark telluric intervals; observed samples there are retained. Matched models are displayed through the excluded fit bands without a display mask; original template coverage still limits their wavelength extent. Dotted lines: catalogue-z host positions.{h(smoothing_note)}</figcaption></figure><div class="downloads"><a href="{figure_url}" {image_download}>{image_label} · 300 dpi</a></div>'
+        if compact:
+            body = body.replace('<figcaption>', '<figcaption>Up to six ranked native matches · full observed spectrum and unmasked models.<details><summary>Plot display details</summary>', 1).replace('</figcaption>', '</details></figcaption>', 1)
     elif not run['curve_ranks']:
         body += '<p class="bad">Saved model curves unavailable. Candidate scores remain visible below.</p>'
     else:
@@ -225,7 +231,8 @@ def fit_card(run, results, prefix, curve_notes=(), locations=None):
         body += '<p class="muted">' + h(f"Rank {note['rank']}: the saved model curve uses Aᵥ={note['evaluated_parameters']['A_v']:.3g} from an equal-score native solution; the results table retains its original Aᵥ={note['saved_parameters']['A_v']} row. Both parameter records are preserved in the numerical download.") + '</p>'
     missing = [m['rank'] for m in run['matches'] if m['rank'] not in run['curve_ranks']]
     if missing: body += '<p class="bad">No saved model for rank(s): ' + ', '.join(map(str, missing)) + '.</p>'
-    body += f'<div class="downloads"><a href="{prefix}data/{run["plot_key"]}.json.gz" download>Six-candidate evidence + plotted arrays (.json.gz)</a></div><details><summary>Fit provenance</summary><p>Execution: {h(run["execution_id"])}</p><p>Record SHA-256: {h(run.get("record_sha256"))}</p><p>{h(run.get("attempt_path"))}</p></details></section>'
+    evidence_url = h(url('data/' + run['plot_key'] + '.json.gz'))
+    body += f'<div class="downloads"><a href="{evidence_url}" download="{h(run["plot_key"])}.json.gz">Six-candidate evidence + plotted arrays (.json.gz)</a></div><details><summary>Fit provenance</summary><p>Execution: {h(run["execution_id"])}</p><p>Record SHA-256: {h(run.get("record_sha256"))}</p><p>{h(run.get("attempt_path"))}</p></details></section>'
     return body
 
 
