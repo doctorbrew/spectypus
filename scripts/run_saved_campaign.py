@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from datetime import datetime, timezone
+import json
 import math
 import os
 from pathlib import Path
@@ -18,6 +19,41 @@ import uuid
 from spectypus.io import write_json, read_json, digest, file_hash
 from spectypus.pipeline import make_plan, save_plan, execute_one, current_record, output_lock, _summarize
 import spectypus
+
+
+def macos_available_capacity(path):
+    """Ask Foundation about user-requested writes, including reclaimable APFS space.
+
+    The OS owns reclamation; this query does not delete snapshots or files.
+    Use the built-in JXA bridge so no Swift compiler or PyObjC install is needed.
+    """
+    if sys.platform != "darwin":
+        return None
+    script = '''ObjC.import("Foundation");
+function run(argv) {
+    var url = $.NSURL.fileURLWithPath(argv[0]);
+    var value = Ref(), error = Ref();
+    var ok = url.getResourceValueForKeyError(value,
+        $.NSURLVolumeAvailableCapacityForImportantUsageKey, error);
+    return JSON.stringify(ok ? ObjC.unwrap(value[0]) : null);
+}'''
+    try:
+        result = subprocess.run(["/usr/bin/osascript", "-l", "JavaScript", "-e",
+                                 script, str(Path(path).resolve())],
+                                capture_output=True, text=True, check=True, timeout=10)
+        return json.loads(result.stdout)
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+
+
+def disk_capacity(path):
+    free = shutil.disk_usage(path).free
+    capacity = macos_available_capacity(path)
+    valid = type(capacity) is int and capacity >= 0
+    return {"immediately_free_bytes": free,
+            "available_bytes": capacity if valid else free,
+            "source": "macos_important_usage" if valid else "filesystem_free",
+            "checked_at": datetime.now(timezone.utc).isoformat()}
 
 
 def checked_plan(path):
@@ -195,8 +231,10 @@ def main():
                 checkpoint(active=active[0] if active else None, active_runs=active)
 
             def disk_check():
-                if shutil.disk_usage(root).free < 20 * 1024**3:
-                    raise RuntimeError("Stopped: less than 20 GiB disk space remains")
+                capacity = disk_capacity(root)
+                checkpoint(disk_space=capacity)
+                if capacity["available_bytes"] < 20 * 1024**3:
+                    raise RuntimeError("Stopped: less than 20 GiB available disk space remains")
 
             jobs = execute_queue(remaining, plan, output, args.workers, launch_dir, active_changed, disk_check)
             try:

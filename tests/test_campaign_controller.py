@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import os
 from pathlib import Path
 import shutil
@@ -17,6 +18,12 @@ from spectypus.pipeline import output_lock, make_plan, save_plan, current_record
 def available_disk_space(monkeypatch):
     """Keep controller tests independent of host capacity; guard tests override."""
     monkeypatch.setattr(shutil, "disk_usage", lambda _: SimpleNamespace(free=100 * 1024**3))
+    original_run = subprocess.run
+    def run(command, *args, **kwargs):
+        if command[0] == '/usr/bin/osascript':
+            return SimpleNamespace(stdout='null')
+        return original_run(command, *args, **kwargs)
+    monkeypatch.setattr(subprocess, 'run', run)
 
 
 def controller():
@@ -241,3 +248,54 @@ def test_corrupt_saved_result_is_not_reused(tmp_path, source_factory, manifest_f
     status = read_json(tmp_path / 'campaign_status.json')
     assert status['completed_this_invocation'] == 1
     assert len(list((tmp_path / 'run/attempts').glob('*/*/record.json'))) == 2
+
+
+def test_macos_reclaimable_capacity_allows_requested_fits(tmp_path, source_factory,
+        manifest_factory, config_factory, fake_engine, monkeypatch):
+    module = controller()
+    monkeypatch.setattr(module.shutil, 'disk_usage', lambda _: SimpleNamespace(free=14 * 1024**3))
+    monkeypatch.setattr(module, 'macos_available_capacity', lambda _: 150 * 1024**3)
+    manifest_factory([source_factory(z='.1')]).rename(tmp_path / 'spectra.csv')
+    config_factory()
+    invoke(module, monkeypatch, tmp_path)
+    status = read_json(tmp_path / 'campaign_status.json')
+    assert status['status'] == 'finished'
+    assert status['disk_space']['immediately_free_bytes'] == 14 * 1024**3
+    assert status['disk_space']['available_bytes'] == 150 * 1024**3
+    assert status['disk_space']['source'] == 'macos_important_usage'
+
+
+@pytest.mark.parametrize('capacity', [None, -1, True, '150000000000', 19 * 1024**3])
+def test_native_capacity_never_disables_low_space_guard(capacity, tmp_path, source_factory,
+        manifest_factory, config_factory, fake_engine, monkeypatch):
+    module = controller()
+    monkeypatch.setattr(module.shutil, 'disk_usage', lambda _: SimpleNamespace(free=14 * 1024**3))
+    monkeypatch.setattr(module, 'macos_available_capacity', lambda _: capacity)
+    manifest_factory([source_factory(z='.1')]).rename(tmp_path / 'spectra.csv')
+    config_factory()
+    with pytest.raises(RuntimeError, match='20 GiB'):
+        invoke(module, monkeypatch, tmp_path)
+    assert not list((tmp_path / 'run/attempts').glob('*/*/record.json'))
+
+
+def test_native_capacity_timeout_falls_back_to_free_space(tmp_path, monkeypatch):
+    module = controller()
+    monkeypatch.setattr(module.sys, 'platform', 'darwin')
+    def unavailable(*args, **kwargs):
+        raise subprocess.TimeoutExpired('osascript', 10)
+    monkeypatch.setattr(module.subprocess, 'run', unavailable)
+    result = module.disk_capacity(tmp_path)
+    assert result['source'] == 'filesystem_free'
+    assert result['available_bytes'] == 100 * 1024**3
+
+
+def test_native_capacity_probe_uses_requested_volume(tmp_path, monkeypatch):
+    module = controller()
+    monkeypatch.setattr(module.sys, 'platform', 'darwin')
+    observed = []
+    def probe(command, **kwargs):
+        observed.append(command)
+        return SimpleNamespace(stdout=json.dumps(150 * 1024**3))
+    monkeypatch.setattr(module.subprocess, 'run', probe)
+    assert module.macos_available_capacity(tmp_path) == 150 * 1024**3
+    assert observed[0][-1] == str(tmp_path.resolve())
