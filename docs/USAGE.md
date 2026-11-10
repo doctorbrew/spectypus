@@ -3,6 +3,13 @@
 This guide covers setup, a first batch, and how to interpret its results.
 The [README](../README.md) provides the quick start.
 
+Reporting currently uses the source-checkout exporters documented in
+[RESULTS_VIEWER.md](RESULTS_VIEWER.md). The next packaging step will expose two
+display modes: **SpectralAtlas** for large samples and **Classification Report**
+for a night's folder or small batch of spectra. Both will read the same saved
+typing evidence. These packaged display selectors are planned, not current CLI
+options; acceptance criteria live in the [roadmap](roadmap/SPECTYPUS_ROADMAP.md).
+
 ## Install
 
 From the cloned repository on macOS or Linux:
