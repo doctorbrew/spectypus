@@ -101,7 +101,7 @@ def test_report_keeps_all_configs_states_ranks_and_exact_downloads(saved_browser
     assert 'Classification Report' in html and 'Night &lt;test&gt;' in html
     assert 'SN-<script>' not in html and 'Unsupported wavelength frame' in html
     assert 'SN2012dn (Ia-pec, +5d)' in html and 'SB2 (5%)' in html
-    assert 'title="0.123456">0.123</span>' in html and 'Supplied target phase: +0.0' in html
+    assert 'title="0.123456">0.123</span>' in html and 'Filename: &lt;test&gt;.dat' in html
     assert len(parsed.articles) == 2 and len(parsed.executions) == 5 and len(parsed.rank_tables) == 4
     assert parsed.sn_count == parsed.epochs == 0
     assert 'sn-sidebar' not in html and 'epoch-jump' not in html and 'browser.js' not in html
@@ -174,3 +174,80 @@ def test_changed_local_template_is_not_linked_as_verified(saved_browser, tmp_pat
     (tmp_path / 'SN2012dn.dat').write_text('changed template')
     with pytest.raises(ValueError, match='Changed local template'):
         build_report(saved_browser, tmp_path / 'bad.html')
+
+
+def test_compact_report_defaults_to_folder_and_removes_explanatory_sections(saved_browser, tmp_path):
+    output = tmp_path / '2026-10-28' / 'index.html'
+    build_report(saved_browser, output)
+    html = output.read_text()
+    assert '<h1>2026-10-28</h1>' in html
+    for text in ('Run record', 'Saved classification evidence', 'Primary evidence',
+                 'Diagnostic fit;', 'Plot display details', 'Exploratory automated',
+                 'Automated candidates for review', 'Supplied target phase', 'unknown-instrument'):
+        assert text not in html
+    assert '<th scope="col">Name</th><th scope="col">Type</th><th scope="col">z</th><th scope="col">Phase</th><th scope="col">Survey</th>' in html
+
+
+def test_reviewed_summary_preserves_native_results_and_host_precision(saved_browser, tmp_path):
+    snapshot = read_json(saved_browser / 'browser-snapshot.json')['snapshots'][0]
+    run = next(r for r in snapshot['runs'] if r['execution_id'] == 'ngsf-free')
+    summary = tmp_path / 'review.json'
+    write_json(summary, {'schema': 'spectypus-reviewed-summary/1', 'records': [{
+        'campaign': 1, 'spectrum_id': run['spectrum_id'], 'execution_id': run['execution_id'],
+        'record_sha256': run['record_sha256'], 'rank': 1, 'reference': 'test reviewer selection',
+        'redshift': .089123, 'redshift_method': 'narrow_lines', 'host_redshift': .087727,
+        'type': 'SNIa-03fg or SNIa', 'phase': 'around peak', 'survey': 'ATLAS'}]})
+    output = tmp_path / 'reviewed.html'
+    build_report(saved_browser, output, summary_path=summary)
+    html = output.read_text()
+    assert '0.089 (host 0.087727)' in html and 'narrow_lines' in html
+    assert 'SNIa-03fg or SNIa' in html and 'around peak' in html and 'ATLAS' in html
+    assert 'title="0.123456">0.123</span>' in html  # native candidate untouched
+    payload = read_json(summary); payload['records'][0]['record_sha256'] = 'stale'
+    write_json(summary, payload)
+    with pytest.raises(ValueError, match='saved fit record'):
+        build_report(saved_browser, tmp_path / 'stale.html', summary_path=summary)
+
+
+def test_compact_fields_do_not_invent_host_survey_instrument_or_spectral_z():
+    from spectral_atlas_presentation import summary_values, spectrum_heading
+    source = {'object_id': 'SN2018avk', 'spectrum_id': 'chen:NOT.dat',
+              'redshift': .132, 'instrument': 'unknown-instrument', 'ztf_id': 'ZTF18aaisyyp'}
+    values, _ = summary_values(source, [])
+    assert values == ['SN2018avk', '—', '—', '—', '—']
+    heading, filename = spectrum_heading(source)
+    assert 'Discovery: —' in heading and 'unknown-instrument' not in heading
+    assert filename == 'Filename: NOT.dat'
+    run = {'execution_id': 'fixed', 'mode': 'fixed', 'record_sha256': 'sha',
+           'matches': [{'rank': 1, 'native_class': 'Ia', 'redshift': .132, 'phase_days': 0}]}
+    review = {'execution_id': 'fixed', 'record_sha256': 'sha', 'rank': 1}
+    values, _ = summary_values(source, [run], review)
+    assert values[1:4] == ['SNIa', '—', '+0 d']  # fixed z is not a spectral measurement
+    run['mode'] = 'free'
+    assert summary_values(source, [run], review)[0][2] == '0.132'
+    source.update(narrow_line_redshift=.088877, narrow_line_redshift_source='saved line measurement', host_redshift=.087727)
+    assert summary_values(source, [run], review)[0][2] == '0.089 (host 0.087727)'
+
+
+def test_automatic_summary_uses_documented_priority_not_cross_engine_scores(saved_browser):
+    from spectral_atlas_presentation import automatic_selection, summary_values
+    snapshot = read_json(saved_browser / 'browser-snapshot.json')['snapshots'][0]
+    runs = snapshot['runs'][:4]
+    run, candidate = automatic_selection(runs)
+    assert (run['engine'], run['mode'], candidate['rank']) == ('ngsf', 'free', 1)
+    run['matches'][0]['qualified'] = False
+    assert automatic_selection(runs)[1]['rank'] == 2
+    for match in run['matches']: match['qualified'] = False
+    assert automatic_selection(runs)[0]['engine'] == 'snid_sage'
+    for row in runs: row['status'] = 'no_good_match'
+    assert summary_values(snapshot['spectra'][0], runs)[0][1:4] == ['—', '—', '—']
+
+
+def test_editable_log_payload_roundtrips_unsafe_names_and_keeps_evidence(saved_browser, tmp_path):
+    import re
+    output = tmp_path / 'log.html'
+    build_report(saved_browser, output)
+    payload = json.loads(re.search(r'<script type="application/json" id="night-log-data">(.*?)</script>', output.read_text()).group(1))
+    assert payload['records'][1]['source']['object_id'] == 'SN-<script>'
+    assert 'save-night-log' in output.read_text() and 'csv-night-log' in output.read_text()
+    assert len(payload['records'][1]['runs']) == 4

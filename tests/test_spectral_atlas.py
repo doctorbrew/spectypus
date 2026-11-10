@@ -31,7 +31,7 @@ def test_export_freezes_verified_states_and_downloads(tmp_path, source_factory, 
     assert manifest['object_reports'] == 2
     index = (dest.parent / 'index.html').read_text()
     assert 'SN-&lt;script&gt;' in index and 'SN-<script>' not in index
-    assert 'not probabilities' in index and 'No good match' in index
+    assert 'Exploratory automated classifications' not in index and 'No good match' in index
     for checksum, payload in re.findall(r'data-sha256="([a-f0-9]+)" href="data:[^;]+;base64,([^"]+)"', index):
         assert hashlib.sha256(base64.b64decode(payload)).hexdigest() == checksum
     assert not re.search(r'(?:src|href)="https?://', index)

@@ -17,13 +17,14 @@ from pathlib import Path
 from build_spectral_atlas import (
     ASSETS, ROOT, badge, count_text, data_uri, download_bytes, h, key, page, table,
 )
-from build_spectral_browser import fit_card, target_phases
+from build_spectral_browser import fit_card
+from spectral_atlas_presentation import AUTO_POLICY, SUMMARY_HEADERS, editable_log, load_summaries, summary_key, summary_row, spectrum_heading
 from spectral_atlas_products import PLOT_OUTPUT, validate_product
 from spectypus.io import canonical, digest, file_hash
-from spectypus.phases import number, phase_context
+from spectypus.phases import number
 
 
-def build_report(source, output, *, spectrum_ids=(), campaigns=(), title='Classification Report'):
+def build_report(source, output, *, spectrum_ids=(), campaigns=(), title=None, summary_path=None):
     source, output = Path(source).resolve(), Path(output).resolve()
     if output.exists():
         raise FileExistsError('Use a new report path; existing reports are preserved')
@@ -64,6 +65,7 @@ def build_report(source, output, *, spectrum_ids=(), campaigns=(), title='Classi
         for note in restoration.get('curve_parameter_recoveries', []):
             notes[note['plot_key']].append(note)
 
+    summaries = load_summaries(summary_path, frozen)
     selected = []
     for snapshot in frozen['snapshots']:
         if campaigns and snapshot['browser_campaign'] not in campaigns:
@@ -96,17 +98,13 @@ def build_report(source, output, *, spectrum_ids=(), campaigns=(), title='Classi
         sid = spectrum['spectrum_id']
         ident = f'c{snapshot["browser_campaign"]}-' + key(sid)
         refs = snapshot['phase_references'].get(spectrum['object_id'], [])
-        phases = target_phases(spectrum, phase_context(spectrum, refs))
-        inventory.append([f'<a href="#{ident}">{h(spectrum["object_id"])}</a>', h(sid),
-                          h(spectrum.get('mjd')), h(spectrum.get('instrument')),
-                          h(snapshot['label']), h(spectrum.get('redshift')),
-                          h(count_text(Counter(r['status'] for r in runs))) if runs else 'No planned fits'])
-        article = f'<article class="report-spectrum" id="{ident}"><h3>{h(spectrum["object_id"])} · {h(spectrum.get("instrument"))}</h3>'
-        article += f'<p class="report-meta">{h(sid)}<br>{h(snapshot["label"])} · MJD {h(spectrum.get("mjd"))} · supplied z {h(spectrum.get("redshift"))}</p>'
-        article += '<p class="report-meta">' + h(' · '.join(phases)) + '</p>'
-        article += f'<p class="report-meta">Input: {h(spectrum.get("wavelength_frame"))} frame / {h(spectrum.get("wavelength_unit"))}. Display: observer-frame Å. Redshift provenance: {h(spectrum.get("redshift_source"))}.</p>'
+        review = summaries.get(summary_key(snapshot, spectrum))
+        inventory.append(summary_row(spectrum, runs, '#' + ident, review,
+                                     context=f'{snapshot["label"]}; {sid}'))
+        heading, filename = spectrum_heading(spectrum, refs)
+        article = f'<article class="report-spectrum" id="{ident}"><h3>{heading}</h3><p class="report-meta">{filename}</p>'
         if spectrum.get('frame_assumed') in (True, 'true'):
-            article += '<p class="bad">Observer-frame assumption is provisional; wavelength-frame review is still required.</p>'
+            article += '<p class="bad">Frame provisional</p>'
         cards = []
         for run in sorted(runs, key=lambda r: (r['mode'] != 'fixed', r['engine'] != 'snid_sage')):
             plot_key = run['plot_key']
@@ -147,7 +145,7 @@ def build_report(source, output, *, spectrum_ids=(), campaigns=(), title='Classi
                             raise ValueError('Changed local template file')
                         template_files[str(path)] = expected
             cards.append(fit_card(run, results, '', notes[plot_key], locations,
-                                  asset_url=assets.__getitem__, compact=True))
+                                  asset_url=assets.__getitem__))
             if run['status'] != 'completed' or (run['matches'] and result.get('status') != 'ready'):
                 reason = run.get('reason') or ('Saved model figure unavailable' if run['matches'] and result.get('status') != 'ready' else 'No further reason recorded')
                 issues.append([f'<a href="#{ident}">{h(sid)}</a>', h(snapshot['label']),
@@ -160,23 +158,25 @@ def build_report(source, output, *, spectrum_ids=(), campaigns=(), title='Classi
 
     evidence = {'schema': 'spectypus-classification-report/1', 'display': 'Classification Report',
                 'created_at': datetime.now(timezone.utc).isoformat(), 'source_browser': str(source),
+                'automatic_summary_policy': AUTO_POLICY, 'reviewed_summaries': summaries, 'summary_source_sha256': file_hash(summary_path) if summary_path else None,
                 'plot_output': PLOT_OUTPUT, 'spectra': len(selected), 'fits': sum(states.values()),
                 'figures': figure_count, 'states': dict(states), 'records': records,
                 'source_products_sha256': used, 'template_files_sha256': template_files,
                 'curve_parameter_recoveries': [note for record in records for run in record['runs'] for note in notes[run['plot_key']]],
-                'presentation_sha256': {n: file_hash(ASSETS / n) for n in ('atlas.css', 'atlas.js', 'report.css')},
+                'presentation_sha256': {n: file_hash(ASSETS / n) for n in ('atlas.css', 'atlas.js', 'report.css', 'night-log.js')},
                 'builder_sha256': file_hash(Path(__file__)),
-                'shared_components_sha256': {n: file_hash(ROOT / 'scripts' / n) for n in ('build_spectral_atlas.py', 'build_spectral_browser.py', 'spectral_atlas_rank_table.py')}}
+                'shared_components_sha256': {n: file_hash(ROOT / 'scripts' / n) for n in ('build_spectral_atlas.py', 'build_spectral_browser.py', 'spectral_atlas_rank_table.py', 'spectral_atlas_presentation.py')}}
     body = f'<p class="report-summary">{len(selected)} spectrum records · {figure_count} master grids · {h(count_text(states))}</p>'
-    body += '<nav class="report-nav" aria-label="Report sections"><a href="#inventory">Spectrum inventory</a><a href="#spectra">Spectra &amp; matches</a><a href="#issues">Issues</a><a href="#records">Run record</a></nav>'
-    body += '<p class="note">Automated candidates for review. Native scores retain their engine-specific meaning; a matched template type is not a confirmed target classification.</p>'
-    body += '<section id="inventory"><h2>Spectrum inventory</h2>' + table(['Target', 'Spectrum', 'MJD', 'Instrument', 'Campaign', 'Supplied z', 'Fit states'], inventory) + '</section>'
-    body += '<section id="spectra"><h2>Spectra &amp; matches</h2><p class="muted">Each available SNID/NGSF fixed/free-z fit has its own six-panel grid. Template phases are separate from target phases. Table redshifts and scores use three decimals; tooltips and downloads retain full precision.</p>' + ''.join(articles) + '</section>'
+    body += '<nav class="report-nav" aria-label="Report sections"><a href="#inventory">Spectrum inventory</a><a href="#spectra">Spectra &amp; matches</a><a href="#issues">Issues</a><a href="#night-log">Final night log</a></nav>'
+    body += '<section id="inventory"><h2>Classifications</h2>' + table(SUMMARY_HEADERS, inventory)
+    body += '<div class="downloads">' + download_bytes(canonical(evidence).encode(), 'classification-report-evidence.json', 'Data') + '</div></section>'
+    body += '<section id="spectra"><h2>Spectra &amp; matches</h2>' + ''.join(articles) + '</section>'
     body += '<section id="issues"><h2>Issues</h2>' + (table(['Spectrum', 'Campaign', 'Engine', 'z mode', 'State', 'Reason'], issues) if issues else '<p>No unresolved fit or figure states in this selection.</p>') + '</section>'
-    body += '<section id="records"><h2>Run record</h2><p>This report reuses frozen saved results and original JPG bytes. No fits, preprocessing or plots were rerun. Snapshot times describe saved evidence, not the observing night. Campaigns remain separate; this selection does not recompute combined support.</p><p>Figures and numerical downloads are embedded for offline use. Optional template links require the original local bank; SNID links identify its HDF5 container and group/epoch in the tooltip.</p>'
-    body += '<div class="downloads">' + download_bytes(canonical(evidence).encode(), 'classification-report-evidence.json', 'Selected evidence + provenance') + '</div></section>'
+    log_identity = digest([{'campaign': r['campaign'], 'source': r['source'], 'runs': [(x['execution_id'], x.get('record_sha256')) for x in r['runs']]} for r in records])
+    body += editable_log(records, log_identity)
     stamp = max(s['checked_at'] for s, _, _ in selected)
-    html = page(title, body, stamp, display='Classification Report', extra_css=(ASSETS / 'report.css').read_text())
+    html = page(title or output.parent.name, body, stamp, display='Classification Report', extra_css=(ASSETS / 'report.css').read_text())
+    html = html.replace('</body>', '<script>' + (ASSETS / 'night-log.js').read_text() + '</script></body>')
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open('x', encoding='utf-8') as stream:
         stream.write(html)
@@ -190,10 +190,11 @@ def main():
     parser.add_argument('--output', type=Path, required=True, help='New standalone HTML file')
     parser.add_argument('--spectrum', action='append', default=[], help='Exact spectrum ID; repeat to select several (default: all)')
     parser.add_argument('--campaign', type=int, action='append', default=[], help='Saved browser campaign number; repeat as needed')
-    parser.add_argument('--title', default='Classification Report', help='Batch label or supplied observing date')
+    parser.add_argument('--title', help='Folder label or date (default: output folder name)')
+    parser.add_argument('--summary', type=Path, help='Separate reviewer summary JSON; never edits saved fits')
     args = parser.parse_args()
     print(json.dumps(build_report(args.from_browser, args.output, spectrum_ids=args.spectrum,
-                                 campaigns=args.campaign, title=args.title), indent=2))
+                                 campaigns=args.campaign, title=args.title, summary_path=args.summary), indent=2))
 
 
 if __name__ == '__main__':

@@ -157,11 +157,10 @@ def capture(source_dir, dest, label):
 def page(title, body, stamp, back='', *, display='SpectralAtlas', extra_css=''):
     css = (ASSETS / 'atlas.css').read_text() + extra_css
     js = (ASSETS / 'atlas.js').read_text()
-    readable_stamp = datetime.fromisoformat(stamp).strftime('%d %B %Y, %H:%M:%S')
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{h(title)} · {h(display)}</title><style>{css}</style></head>
-<body><main><header><a class="brand" href="{back or '#top'}">Spectypus <span>/ {h(display)}</span></a><span>Saved classification evidence</span></header>
-<div id="top"><h1>{h(title)}</h1><p class="muted">Snapshot {h(readable_stamp)} UTC</p></div>{body}
-<footer>Exploratory automated classifications for review. Native scores and combined support are not probabilities. Original attempts remain unchanged.</footer></main>
+<body><main><header><a class="brand" href="{back or '#top'}">Spectypus <span>/ {h(display)}</span></a></header>
+<div id="top"><h1>{h(title)}</h1></div>{body}
+</main>
 <dialog aria-label="Enlarged spectrum figure"><button type="button" class="close">Close figure</button><button type="button" class="zoom" aria-pressed="false">Zoom to full resolution</button><img alt=""><p></p></dialog><script>{js}</script></body></html>'''
 
 

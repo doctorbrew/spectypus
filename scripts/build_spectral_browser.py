@@ -25,6 +25,7 @@ from spectypus.fit_plots import phase_lines
 from spectypus.io import canonical, digest, file_hash, read_json, write_json, atomic_text
 from spectypus.phases import phase_context, number
 from build_spectral_atlas import h, key, badge, page, table, count_text
+from spectral_atlas_presentation import AUTO_POLICY, write_classification_tables, SUMMARY_HEADERS, load_summaries, summary_key, summary_row, spectrum_heading
 
 ASSETS = ROOT / 'assets/spectralatlas'
 
@@ -182,7 +183,7 @@ def sidebar(objects, selected, prefix):
         terms = ' '.join([obj['name'], *obj['aliases']]).lower()
         current = 'aria-current="page"' if obj['name'] == selected else ''
         rows.append(f'<a href="{prefix}objects/{key(obj["name"])}.html" data-sn="{h(terms)}" {current}><span>{h(obj["name"])}</span><small>{obj["spectra"]} records · {len(obj["campaigns"])} campaign(s)</small></a>')
-    return f'<aside class="sn-sidebar" aria-label="Supernova navigation"><a class="sidebar-brand" href="{prefix}index.html">Spectypus<br><span>SpectralAtlas</span></a><label for="sn-search">Find a supernova</label><input id="sn-search" type="search" placeholder="SN name or ZTF alias" autocomplete="off"><p id="sn-count" class="muted">{len(objects)} objects</p><nav class="sn-list">'+''.join(rows)+f'</nav><a class="summary-link" href="{prefix}summary.html">Campaign summary &amp; provenance</a></aside>'
+    return f'<aside class="sn-sidebar" aria-label="Supernova navigation"><a class="sidebar-brand" href="{prefix}index.html">Spectypus<br><span>SpectralAtlas</span></a><label for="sn-search">Find a supernova</label><input id="sn-search" type="search" placeholder="SN name or ZTF alias" autocomplete="off"><p id="sn-count" class="muted">{len(objects)} objects</p><nav class="sn-list">'+''.join(rows)+f'</nav><a class="summary-link" href="{prefix}summary.html">Campaign summary</a></aside>'
 
 
 def browser_page(title, body, frozen, objects, selected, prefix):
@@ -193,51 +194,41 @@ def browser_page(title, body, frozen, objects, selected, prefix):
     return html.replace('</body>', '<script>' + (ASSETS / 'browser.js').read_text() + '</script></body>', 1)
 
 
-def fit_card(run, results, prefix, curve_notes=(), locations=None, *, asset_url=None, compact=False):
+def fit_card(run, results, prefix, curve_notes=(), locations=None, *, asset_url=None):
     url = asset_url or (lambda name: prefix + name)
     engine = 'NGSF' if run['engine'] == 'ngsf' else 'SNID-SAGE'
     heading = f'{engine} · {run["mode"]}-z'
-    body = f'<section class="fit-card" data-execution="{h(run["execution_id"])}" data-engine="{h(run["engine"])}" data-mode="{h(run["mode"])}"><h4>' + h(heading) + ' ' + badge(run['status']) + '</h4><p class="muted">' + ('Primary evidence' if run['primary'] else 'Diagnostic fit; excluded from primary support') + '</p>'
+    body = f'<section class="fit-card" data-execution="{h(run["execution_id"])}" data-engine="{h(run["engine"])}" data-mode="{h(run["mode"])}"><h4>' + h(heading) + ' ' + badge(run['status']) + '</h4>'
     if run['reason']: body += '<p class="' + ('bad' if run['status'] in {'blocked', 'failed', 'invalid_evidence'} else 'muted') + '">' + h(run['reason']) + '</p>'
     if not run['matches']: return body + '<p class="empty">No saved candidates for this fit.</p></section>'
     first = run['matches'][0]
-    body += '<p class="muted">' + h(first['metric']) + ' · ' + h(first['metric_direction']) + ' is better. Showing ' + str(len(run['matches'])) + ' of ' + str(run.get('candidate_count', len(run['matches']))) + ' native candidates.</p>'
+    body += '<p class="muted">' + h(first['metric']) + ' · ' + h(first['metric_direction']) + ' is better.</p>'
     result = results.get(run['plot_key'])
     if result and result['status'] == 'ready':
         title = f'{run["object_id"]} / {heading}: best {len(run["matches"])} saved native candidates'
         figure_url = h(url('figures/' + result['jpg']))
         image_download = f'download="{h(result["jpg"])}"' if asset_url else 'target="_blank" rel="noopener"'
         image_label = 'Download JPG' if asset_url else 'Open JPG'
-        panels = [p for p in result['panels'] if p['status'] == 'rendered']
-        smoothing_note = ''
-        if panels and 'savgol_filtered_samples' in panels[0]:
-            supported = sum(p['savgol_filtered_samples'] > 0 for p in panels)
-            smoothing_note = (f' 10 Å smoothing is supported on {supported} of {len(panels)} panels; coarse portions retain native flux.'
-                              if supported else ' Saved sampling is too coarse or short for 10 Å smoothing; black observed curves retain native flux.')
-        clipped = panels[0].get('limit_raw_samples_outside', 0) if panels else 0
-        offscale = sum(p.get('model_entirely_outside_limits', False) for p in panels)
-        if offscale:
-            smoothing_note += f' {offscale} saved model(s) lie entirely outside the observed-spectrum y-range and are labelled in their panels; their native arrays are unchanged.'
-        smoothing_note += f' Robust y-limits place {clipped} raw input samples outside the visible range; all samples remain in the numerical download.'
-        body += f'<figure><button class="enlarge" type="button" aria-label="Enlarge {h(title)}"><img src="{figure_url}" loading="lazy" alt="{h(title)}"></button><figcaption>Up to six ranked matches: full input observations in black, raw input in grey (alpha 0.2), and coral models restored to input flux units. Legends give the target and matched SN names, the matched template’s native type, and recorded phases. Unknown or ambiguous target phases are explicit. Short grey bars mark telluric intervals; observed samples there are retained. Matched models are displayed through the excluded fit bands without a display mask; original template coverage still limits their wavelength extent. Dotted lines: catalogue-z host positions.{h(smoothing_note)}</figcaption></figure><div class="downloads"><a href="{figure_url}" {image_download}>{image_label} · 300 dpi</a></div>'
-        if compact:
-            body = body.replace('<figcaption>', '<figcaption>Up to six ranked native matches · full observed spectrum and unmasked models.<details><summary>Plot display details</summary>', 1).replace('</figcaption>', '</details></figcaption>', 1)
+        body += f'<figure><button class="enlarge" type="button" aria-label="Enlarge {h(title)}"><img src="{figure_url}" loading="lazy" alt="{h(title)}"></button></figure><div class="downloads"><a href="{figure_url}" {image_download}>{image_label} · 300 dpi</a></div>'
     elif not run['curve_ranks']:
         body += '<p class="bad">Saved model curves unavailable. Candidate scores remain visible below.</p>'
     else:
         body += '<p class="bad">Figure unavailable: ' + h((result or {}).get('reason', 'Figure generation incomplete')) + '</p>'
     body += candidate_rows(run, locations)
-    for note in curve_notes:
-        body += '<p class="muted">' + h(f"Rank {note['rank']}: the saved model curve uses Aᵥ={note['evaluated_parameters']['A_v']:.3g} from an equal-score native solution; the results table retains its original Aᵥ={note['saved_parameters']['A_v']} row. Both parameter records are preserved in the numerical download.") + '</p>'
+    if curve_notes:
+        body += '<p class="muted" title="Saved curve and table use different equal-score native parameters; both are retained in the data.">Curve/table parameter tie</p>'
     missing = [m['rank'] for m in run['matches'] if m['rank'] not in run['curve_ranks']]
     if missing: body += '<p class="bad">No saved model for rank(s): ' + ', '.join(map(str, missing)) + '.</p>'
     evidence_url = h(url('data/' + run['plot_key'] + '.json.gz'))
-    body += f'<div class="downloads"><a href="{evidence_url}" download="{h(run["plot_key"])}.json.gz">Six-candidate evidence + plotted arrays (.json.gz)</a></div><details><summary>Fit provenance</summary><p>Execution: {h(run["execution_id"])}</p><p>Record SHA-256: {h(run.get("record_sha256"))}</p><p>{h(run.get("attempt_path"))}</p></details></section>'
+    body += f'<div class="downloads"><a href="{evidence_url}" download="{h(run["plot_key"])}.json.gz">Data</a></div></section>'
+
     return body
 
 
 def write_browser(frozen, root, results):
     groups = defaultdict(list)
+    summary_path = root / 'classification-summary.json'
+    summaries = load_summaries(summary_path if summary_path.exists() else None, frozen)
     locations = read_json(root / 'template-locations.json').get('locations', {}) if (root / 'template-locations.json').exists() else {}
     curve_notes = defaultdict(list)
     if (root / 'model-restoration.json').exists():
@@ -254,37 +245,29 @@ def write_browser(frozen, root, results):
     for name, rows in groups.items():
         rows.sort(key=lambda item: (item[0]['browser_campaign'], number(item[1].get('mjd')) if number(item[1].get('mjd')) is not None else float('inf'), item[1]['spectrum_id']))
         for prefix, path in ([('../', root / 'objects' / (key(name) + '.html'))] + ([('', root / 'index.html')] if name == featured else [])):
-            body = '<p>Every available spectrum, with up to six native candidates from SNID-SAGE and NGSF. Target phase and template phase are shown separately.</p><div class="epoch-controls"><label>Spectrum / epoch <select id="epoch-jump"><option value="">Choose an epoch</option>'
+            body = '<div class="epoch-controls"><label>Spectrum / epoch <select id="epoch-jump"><option value="">Choose an epoch</option>'
             for s, source, runs in rows:
                 ident = f'c{s["browser_campaign"]}-' + key(source['spectrum_id'])
                 body += f'<option value="{ident}">{h(s["label"])} · MJD {h(source.get("mjd"))} · {h(source.get("instrument"))}</option>'
             body += '</select></label><button type="button" id="expand-epochs">Expand all spectra</button><button type="button" id="collapse-epochs">Collapse all spectra</button></div>'
-            body += '<p class="muted">Table redshifts and scores are rounded to three decimals; full precision is retained in the numerical download and tooltips. Galaxy percentages are native model flux contributions. Template links open original files in the local bank; SNID links open an HDF5 container, with its group/epoch in the tooltip. These optional source links require the bank on this computer.</p>'
+            body += table(SUMMARY_HEADERS, [summary_row(source, runs, '#c' + str(s['browser_campaign']) + '-' + key(source['spectrum_id']),
+                                summaries.get(summary_key(s, source)), context=f'{s["label"]}; {source["spectrum_id"]}') for s, source, runs in rows])
             previous_campaign = None; opened = False
             for s, source, runs in rows:
                 if s['browser_campaign'] != previous_campaign:
                     previous_campaign = s['browser_campaign']
-                    obj = next(o for o in s['summary']['objects'] if o['object_id'] == name)
-                    body += f'<section class="campaign-heading"><h2>{h(s["label"])}</h2><p>{h(count_text(Counter(r["status"] for cs, _, rr in rows if cs["browser_campaign"]==previous_campaign for r in rr)))}</p><p class="muted">Automated suggestion: {h(obj["proposed_class"] or "none")} ({h(obj["status"])}). Support is uncalibrated and assessed separately for each campaign.</p></section>'
-                context = phase_context(source, s['phase_references'].get(name, []))
-                phases = target_phases(source, context)
+                    body += f'<section class="campaign-heading"><h2>{h(s["label"])}</h2></section>'
+                heading, filename = spectrum_heading(source, s['phase_references'].get(name, []))
                 ident = f'c{s["browser_campaign"]}-' + key(source['spectrum_id'])
                 initial_open = not opened and any(r['matches'] for r in runs)
                 opened |= initial_open
-                states = Counter(r['status'] for r in runs)
-                body += f'<details class="epoch" id="{ident}" {"open" if initial_open else ""}><summary><span class="epoch-title">MJD {h(source.get("mjd"))} · {h(source.get("instrument"))}</span><span class="epoch-phase">{h(" · ".join(phases))}</span><span class="muted">{h(count_text(states))}</span></summary><div class="epoch-content">'
+                body += f'<details class="epoch" id="{ident}" {"open" if initial_open else ""}><summary><span class="epoch-title">{heading}</span><span class="muted">{filename}</span></summary><div class="epoch-content">'
                 if source.get('frame_assumed') in (True, 'true'):
-                    body += '<p class="bad">Observer-frame assumption is provisional; wavelength-frame review is still required.</p>'
-                body += f'<p class="muted">{h(source["spectrum_id"])}<br>Supplied z: {h(source.get("redshift"))} · input {h(source.get("wavelength_frame"))} frame / {h(source.get("wavelength_unit"))} · display observer-frame Å.</p><details><summary>Target phase references and redshift provenance</summary><p>{h(source.get("redshift_source"))}</p>'
-                for ref in context['references']:
-                    body += '<p>' + h(f'{ref["kind"]}, {ref["band"]}, reference MJD {ref["mjd"]}; {ref["source"]}:{ref["field"]}; rest days {ref["rest_days"]}, observer days {ref["observer_days"]}') + '</p>'
-                body += '</details><div class="fit-grid">' + ''.join(fit_card(r, results, prefix, curve_notes[r['plot_key']], locations.get(r['plot_key'])) for r in sorted(runs, key=lambda r: (r['mode'] != 'fixed', r['engine'] != 'snid_sage'))) + '</div></div></details>'
-            body += '<p class="note">Dark observed curves use 10 Å Savitzky–Golay display smoothing of the full staged input; every original input sample appears behind them in grey at alpha 0.2. The full input wavelength range is displayed. NGSF masked model samples are reconstructed from verified templates and saved fit coefficients, then normalization is reversed. SNID models are displayed using the replay-verified observed continuum and flux offset; this is a display conversion, not a flux-calibrated template SED, and the native model taper remains. No observation mask is applied to either matched-model display. Shared y-limits use a separate 50 Å running-median and Savitzky–Golay trend, omit filter-edge support, retain its central 99% range, allow three times a robust first-difference scatter scale for ordinary noise, and expand it outward by a factor of 1.1. This is display clipping, not rejection of scientific samples. Short or coarse input uses an explicitly recorded fallback. Telluric regions remain eligible; no extra plotting mask is applied. Native gaps remain gaps; samples too coarse for a 10 Å filter are retained unsmoothed. Ranks are engine-native rankings, not six necessarily distinct supernovae. A saved candidate is not a confirmed classification. Unknown target phases remain unknown; discovery time is not explosion time.</p>'
+                    body += '<p class="bad">Frame provisional</p>'
+                body += '<div class="fit-grid">' + ''.join(fit_card(r, results, prefix, curve_notes[r['plot_key']], locations.get(r['plot_key'])) for r in sorted(runs, key=lambda r: (r['mode'] != 'fixed', r['engine'] != 'snid_sage'))) + '</div></div></details>'
             atomic_text(path, browser_page(name, body, frozen, objects, name, prefix))
-    summary = '<p>Frozen saved evidence. The main and provisional Fritz campaigns overlap; their support scores remain separate.</p>'
-    summary += table(('Campaign', 'Objects', 'Spectrum records', 'Fit states'), [[h(s['label']), str(len(s['summary']['objects'])), str(len(s['spectra'])), h(count_text(s['counts']))] for s in frozen['snapshots']])
-    summary += '<section><h2>How to read matches</h2><p>Each spectrum expands to show SNID-SAGE and NGSF, with fixed/free redshift modes separately labelled. Native scores preserve their direction and qualification; they are not interchangeable between engines. Template phase comes from the template library; target phase uses the recorded catalogue reference and frame.</p><p>Completed, no good match, failed, blocked, pending, duplicate and invalid evidence remain distinct. Missing curves are explicit. No classification was rerun to create this browser.</p></section>'
-    summary += '<section><h2>Offline files</h2><p>Copy this entire directory. Pages, 300-dpi JPG figures and compressed numerical evidence use local relative links; no server, network, CDN or remote fonts are required.</p><div class="downloads"><a href="manifest.json" download>Browser manifest</a><a href="browser-snapshot.json" download>Frozen evidence snapshot</a></div></section>'
+    summary = table(('Campaign', 'Objects', 'Spectrum records', 'Fit states'), [[h(s['label']), str(len(s['summary']['objects'])), str(len(s['spectra'])), h(count_text(s['counts']))] for s in frozen['snapshots']])
+    summary += '<div class="downloads"><a href="manifest.json" download>Manifest</a><a href="browser-snapshot.json" download>Data</a><a href="classification_summary.csv" download>Summary CSV</a><a href="best_matches.csv" download>Best matches CSV</a><a href="native_matches.csv" download>Native matches CSV</a></div>'
     atomic_text(root / 'summary.html', browser_page('Classification results', summary, frozen, objects, '', ''))
     return objects
 
@@ -361,6 +344,13 @@ def publish(frozen, root, results):
     if (root / 'jpg-migration.json').exists():
         manifest['jpg_migration'] = {'path': 'jpg-migration.json', 'sha256': file_hash(root / 'jpg-migration.json'),
                                      'note': 'Existing JPG bytes reused from the recorded legacy renderer; numerical evidence unchanged.'}
+    summary_path = root / 'classification-summary.json'
+    summaries = load_summaries(summary_path if summary_path.exists() else None, frozen)
+    manifest['classification_tables'] = write_classification_tables(frozen, root, summaries)
+    manifest['automatic_summary_policy'] = AUTO_POLICY
+    manifest['compact_presentation_sha256'] = file_hash(ROOT / 'scripts/spectral_atlas_presentation.py')
+    if (root / 'classification-summary.json').exists():
+        manifest['reviewed_summary_sha256'] = file_hash(root / 'classification-summary.json')
     write_json(root / 'manifest.json', manifest)
     checks = {str(p.relative_to(root)): file_hash(p) for p in sorted(root.rglob('*')) if p.is_file() and '.plot-cache' not in p.parts and p.name != 'checksums.json'}
     write_json(root / 'checksums.json', checks)

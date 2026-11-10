@@ -26,4 +26,9 @@
     if (event.target.value) { history.replaceState(null, '', '#' + event.target.value); openEpoch(event.target.value); }
   });
   if (location.hash) openEpoch(decodeURIComponent(location.hash.slice(1)));
+  window.addEventListener('hashchange', () => openEpoch(decodeURIComponent(location.hash.slice(1))));
+  document.addEventListener('click', event => {
+    const link = event.target.closest('a[href^="#"]');
+    if (link) openEpoch(decodeURIComponent(link.hash.slice(1)));
+  });
 })();

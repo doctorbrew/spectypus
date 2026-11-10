@@ -43,7 +43,8 @@ def test_sidebar_groups_same_sn_but_keeps_campaign_evidence(tmp_path, source_fac
     html = (root / 'index.html').read_text()
     assert html.count('data-sn=') == 1
     assert 'campaign 1' in html and 'campaign 2' in html
-    assert 'MJD 59010' in html and '+9.1 d (rest)' in html
+    assert 'MJD 59010' in html and 'Discovery: —' in html
+    assert '+9.1 d (rest)' not in html and 'Filename:' in html
     assert html.count('class="epoch"') == 2
     assert 'Saved model curves unavailable' in html
     assert 'Scientific fieldnotes' not in html and 'Fieldnotes' not in html
