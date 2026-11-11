@@ -46,6 +46,65 @@ to overwrite files. Keep environments serving active fits unchanged; prepare
 updates in a separate environment. Dependencies live in [environment.yml](../environment.yml)
 and [pyproject.toml](../pyproject.toml); other engine versions need verification.
 
+## Nightly folder command
+
+For a flat folder containing only reduced science `.txt` spectra:
+
+```bash
+conda activate spectypus
+spectypus night /path/to/spectra
+```
+
+No per-night configuration or manifest is required. The command reuses engine
+settings in this order: `--config PATH`, `SPECTYPUS_CONFIG`,
+`spectypus.local.json` in the working directory, then
+`~/.config/spectypus/config.json`. An explicit missing path is an error; it does
+not silently fall back. For a new installation, run
+`spectypus init --config ~/.config/spectypus/config.json` once and fill the engine
+paths described under [Install](#install). Existing checkout settings already
+work. Classifiers and template banks remain external; nothing is downloaded.
+
+The nightly profile declares observer-frame Angstrom input, `redshift_mode: both`
+and `save_fit_curves: true`. Other settings, including enabled engines and the
+free-z grid, come from the installation configuration (the initial grid is
+0–1 in steps of 0.01). Both engines are enabled in the example configuration.
+These frame/unit defaults are a user-selected workflow convention, not inferred
+metadata; override them for differently prepared spectra. Known redshifts receive
+fixed/free fits; unknown redshifts receive free fits only.
+
+Only matching files directly inside the folder are selected; hidden files and
+subdirectories are excluded. Keep standards, logs and alternate reductions out.
+Filename stems serve as opaque object labels: `SN-A_001.txt` becomes `SN-A_001`,
+not a guessed `SN-A` identity. Use the explicit-manifest workflow below to group
+multiple epochs under one physical object or supply richer per-spectrum metadata.
+Known z can be supplied with `--targets`: its `object_id` must match the full
+filename stem. Frame/unit provenance is recorded; absent metadata stays absent.
+
+| Argument | Default / behavior |
+| --- | --- |
+| `--pattern GLOB` | `*.txt`; nonrecursive, quote wildcards; also supports `*.asci` |
+| `--output PATH` | `FOLDER/spectypus`; cannot be the input folder itself |
+| `--config PATH` | Select installation settings explicitly |
+| `--targets CSV` | Optional `object_id,redshift,redshift_source` table |
+| `--frame observer\|rest` | `observer`; rest requires a known z |
+| `--unit angstrom\|nm` | `angstrom` |
+| `--mode auto\|both\|free\|fixed` | `both`; overrides the installation redshift mode |
+| `--z-min`, `--z-max`, `--z-step` | Override individual configured grid values |
+| `--plan-only` | Write plan and input checks without fitting |
+| `--max-runs N` | Limit new engine attempts, not spectra; repeat without it to finish |
+
+Results use the standard CSVs, `summary.json` and `attempts/` described below.
+An automatically generated, content-addressed manifest lives inside the output's
+`.inputs/` directory; resolved configuration is already saved in the plan, so no
+extra nightly configuration is written. Earlier selections and fit evidence are
+retained. Repeating the command reuses verified completed attempts; changed inputs
+or settings receive new execution identities. Original spectra are not rewritten.
+
+This command runs typing and saves fit curves; direct nightly-to-Classification-
+Report HTML/JPG export remains pending. The installed `review` renderer is still
+legacy PDF/JPG and should be omitted from JPG-only workflows. Source report
+exporters accept verified frozen browser evidence; see [RESULTS_VIEWER.md](RESULTS_VIEWER.md).
+
 ## Inputs and a first batch
 
 For reduced spectra arranged as `reduced/object/spectrum.dat`:

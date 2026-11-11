@@ -1,6 +1,7 @@
 include environment.yml
 include AGENTS.md
 include CONTRIBUTING.md
+include README_ePESSTO+.md
 include .github/workflows/ci.yml
 recursive-include docs *.md *.bib
 recursive-include examples *.md *.json *.csv

@@ -12,6 +12,7 @@ from .adapters.engines import fingerprint
 from .config import EXAMPLE, load_config
 from .io import write_json
 from .manifest import discover
+from .night import prepare_night
 from .pipeline import run_batch, summarize_output
 
 
@@ -21,6 +22,20 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init", help="write an editable engine configuration; never overwrite")
     init.add_argument("--config", type=Path, default=Path("spectypus.local.json"))
+    night = sub.add_parser("night", help="type a flat folder of reduced .txt spectra with nightly defaults")
+    night.add_argument("folder", type=Path)
+    night.add_argument("--config", type=Path, help="installation settings; otherwise SPECTYPUS_CONFIG, local or user config")
+    night.add_argument("--output", type=Path, help="results directory (default: FOLDER/spectypus)")
+    night.add_argument("--pattern", default="*.txt", help="filename glob, nonrecursive (default: *.txt)")
+    night.add_argument("--frame", choices=["observer", "rest"], default="observer", help="input frame (default: observer)")
+    night.add_argument("--unit", choices=["angstrom", "nm"], default="angstrom", help="wavelength unit (default: angstrom)")
+    night.add_argument("--targets", type=Path, help="optional object_id,redshift,redshift_source CSV; object_id is filename stem")
+    night.add_argument("--mode", choices=["auto", "both", "free", "fixed"], default="both",
+                       help="redshift modes (default: both for known z, free for unknown z)")
+    for key in ("min", "max", "step"):
+        night.add_argument(f"--z-{key}", type=float, help=f"override configured free-redshift {key}")
+    night.add_argument("--plan-only", action="store_true", help="check inputs and save the plan without fitting")
+    night.add_argument("--max-runs", type=int, help="limit new engine attempts, not spectra")
     manifest = sub.add_parser("manifest", help="scan an explicit directory layout into a CSV manifest")
     manifest.add_argument("root", type=Path)
     manifest.add_argument("--output", type=Path, required=True)
@@ -79,7 +94,19 @@ def main(argv: list[str] | None = None) -> int:
                     healthy = False
                     print(json.dumps({"engine": name, "status": "unavailable", "reason": str(exc)}))
             return 0 if healthy else 1
-        if args.command == "summarize":
+        if args.command == "night":
+            if args.max_runs is not None and args.max_runs < 1:
+                raise ValueError("max_runs must be a positive integer")
+            manifest, config, args.output = prepare_night(
+                args.folder, config=args.config, output=args.output, pattern=args.pattern,
+                frame=args.frame, unit=args.unit, mode=args.mode,
+                z_min=args.z_min, z_max=args.z_max, z_step=args.z_step)
+            print(f"Nightly input: {args.pattern}, {args.frame} frame, {args.unit}; "
+                  f"filename stems as labels. Results: {args.output}", flush=True)
+            summary = run_batch(manifest, config, args.output, targets=args.targets,
+                                max_runs=args.max_runs, execute=not args.plan_only,
+                                progress=lambda line: print(line, flush=True))
+        elif args.command == "summarize":
             summary = summarize_output(args.output)
         else:
             summary = run_batch(args.manifest, args.config, args.output, targets=args.targets,
@@ -94,7 +121,8 @@ def main(argv: list[str] | None = None) -> int:
         nonduplicate_blocks = any(not s.get("complete", False) and s.get("status") != "duplicate"
                                   and any(e["status"] == "blocked" for e in s.get("engine_evidence", []))
                                   for s in summary["spectra"])
-        return 1 if args.command != "plan" and (failures or nonduplicate_blocks) else 0
+        planning = args.command == "plan" or args.command == "night" and args.plan_only
+        return 1 if not planning and (failures or nonduplicate_blocks) else 0
     except (OSError, ValueError, KeyError, TypeError) as exc:
         print(f"spectypus: {exc}", file=sys.stderr)
         return 2
