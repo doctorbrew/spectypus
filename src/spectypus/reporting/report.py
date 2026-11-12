@@ -12,9 +12,11 @@ from .rank_table import candidate_rows
 from .metadata import display_sources
 from .plots import ensure_grid
 from .offline_plots import ensure_map
+from .locations import TemplateLocations
+from .navigation import atlas_body
 
 
-def _write_report(plan, records, states, output):
+def _write_report(plan, records, states, output, *, display="report"):
     """Called under the pipeline's output lock, after current-record verification.
 
     Only the current plan and its verified attempts enter the report. Native rows
@@ -22,6 +24,7 @@ def _write_report(plan, records, states, output):
     No source spectra, template banks, or plotting runtimes need to be available.
     """
     output = Path(output)
+    locator = TemplateLocations()
     by_spectrum = defaultdict(list)
     attempts = {}
     for state in states:
@@ -91,7 +94,9 @@ def _write_report(plan, records, states, output):
                     card += f'<p class="muted">Plot unavailable: {h(figure["reason"])}</p>'
                 metric = matches[0]
                 card += f'<p class="muted">{h(metric["metric"])} · {h(metric["metric_direction"])} is better.</p>'
-                card += candidate_rows({**run, 'matches': matches[:6]})
+                locations, reason = locator.resolve(run, records[run['execution_id']], figure)
+                run['template_links'] = {'locations': locations, 'reason': reason}
+                card += candidate_rows({**run, 'matches': matches[:6]}, locations)
             else:
                 card += '<p class="muted">No saved candidates.</p>'
             cards.append(card + '</section>')
@@ -131,9 +136,13 @@ def _write_report(plan, records, states, output):
     body += '<section id="issues"><h2>Issues</h2>' + (table(['Name', 'Engine', 'z mode', 'State', 'Reason'], issues)
                                                     if issues else '<p>No outstanding fit issues.</p>') + '</section>'
     body += editable_log(report_records, identity)
-    html = page(title, body, display='Classification Report', extra_css=(ASSETS / 'report.css').read_text())
+    css = (ASSETS / 'report.css').read_text()
+    if display == 'atlas':
+        body = atlas_body(body, sources, articles)
+        css += (ASSETS / 'navigation.css').read_text()
+    html = page(title, body, display='SpectralAtlas' if display == 'atlas' else 'Classification Report', extra_css=css)
     scripts = ''.join('<script>' + (ASSETS / name).read_text() + '</script>'
-                      for name in ('selected-plots.js', 'night-log.js'))
+                      for name in ('selected-plots.js', 'night-log.js', 'navigation.js'))
     html = html.replace('</body>', scripts + '</body>')
     destination = output / 'index.html'
     atomic_text(destination, html)

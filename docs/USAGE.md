@@ -408,3 +408,45 @@ Optional `telluric_windows` are observer-frame Angstrom `[lower, upper]` pairs;
 Host-line markers use supplied redshifts without masking lines. See the
 [viewer guide](RESULTS_VIEWER.md), [Python API and CI](../CONTRIBUTING.md), or
 `spectypus <command> --help` for further details.
+
+## Installed offline displays (0.2)
+
+Choose the presentation when typing or refreshing saved results:
+
+```sh
+spectypus summarize --output RESULTS --display report
+spectypus summarize --output RESULTS --display atlas
+spectypus night FOLDER --display atlas
+```
+
+Both choices write `RESULTS/index.html`. `report` (the default) is the continuous
+Classification Report; `atlas` adds a searchable object sidebar and collapsible
+epochs. `plan` and `run` accept the same option. Python callers use
+`summarize_output(path, display="atlas")` or `run_batch(..., display="atlas")`.
+Choosing a display does not change fit identity, native results, automatic
+summary priority or saved reviewer-log identity. No server is needed.
+The installed exporter handles one saved plan, including its objects/epochs;
+the source campaign exporter still owns combining multiple historical campaigns.
+
+Template names link to original local files only after provenance verification.
+SNID links open the HDF5 container and identify its native group/epoch in the
+tooltip; install `spectypus[links]` in the reporting interpreter for HDF5 inspection.
+NGSF links use verified saved display-model provenance. Changed/missing banks
+leave plain text; the downloadable evidence records the reason. Banks are never
+bundled or downloaded. Local file links require access to the original bank paths.
+
+Installing the built wheel without extras supports cached reporting. For a source checkout,
+use `python -m pip install -e '.[dev,plots,links]'`; engine setup still follows
+`environment.yml` and explicit external bank/NGSF paths. First plot preparation
+needs the original configured runtime; fresh rendering needs the plots extra and
+TeX (`latex`, `dvipng`). Cached plots need neither. Run:
+
+```sh
+spectypus doctor --config spectypus.local.json --plots
+```
+
+Doctor now actually imports native dependencies in each configured interpreter,
+reports individual import times, and measures the source/bank fingerprint step.
+It does not classify spectra. The optional plots check uses
+`SPECTYPUS_PLOT_PYTHON` when set. An import failure must be repaired in the named
+interpreter; installing packages in a different Python will not fix it.

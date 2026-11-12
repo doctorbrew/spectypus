@@ -57,12 +57,16 @@ def main(argv: list[str] | None = None) -> int:
     summarize.add_argument("--refresh-tns", action="store_true", help="refresh cached TNS discovery metadata; never refit")
     doctor = sub.add_parser("doctor", help="inspect configured interpreters, engine sources, and template banks")
     doctor.add_argument("--config", type=Path, required=True)
+    doctor.add_argument("--plots", action="store_true", help="also check plotting imports and TeX executables")
     review = sub.add_parser("review", help="open a local read-only results website")
     review.add_argument("--output", type=Path, required=True)
     review.add_argument("--port", type=int, default=8013)
     selected = sub.add_parser('plot-log', help='export selected matches from a saved reviewer JSON log; never refit')
     selected.add_argument('--output', type=Path, required=True)
     selected.add_argument('--log', type=Path, required=True)
+    for command in (night, summarize, *[sub.choices[n] for n in ("plan", "run")]):
+        command.add_argument("--display", choices=["report", "atlas"], default="report",
+                             help="Classification Report (default) or SpectralAtlas")
     args = parser.parse_args(argv)
     try:
         if args.command == 'plot-log':
@@ -99,11 +103,26 @@ def main(argv: list[str] | None = None) -> int:
             healthy = True
             for name, settings in sorted(config["engines"].items()):
                 try:
+                    from .diagnostics import native_probe
+                    import time
+                    probe = native_probe(name, settings)
+                    if probe['status'] != 'ready':
+                        healthy = False
+                        print(json.dumps({"engine": name, **probe, "remedy": "Repair the configured engine interpreter using environment.yml and spectypus[engines]."}))
+                        continue
+                    started = time.perf_counter()
                     result = fingerprint(name, settings)
+                    result['diagnostics'] = probe
+                    result['fingerprint_seconds'] = time.perf_counter() - started
                     print(json.dumps({"engine": name, "status": "ready", "fingerprint": result}, sort_keys=True))
                 except (OSError, ValueError, subprocess.SubprocessError) as exc:
                     healthy = False
                     print(json.dumps({"engine": name, "status": "unavailable", "reason": str(exc)}))
+            if args.plots:
+                from .diagnostics import plot_probe
+                result = plot_probe()
+                healthy = healthy and result['status'] == 'ready'
+                print(json.dumps({"component": "plots", **result}, sort_keys=True))
             return 0 if healthy else 1
         if args.command == "night":
             if args.max_runs is not None and args.max_runs < 1:
@@ -116,13 +135,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Nightly selection: {manifest}; nonfinite flux: {args.nonfinite}. Results: {args.output}", flush=True)
             summary = run_batch(manifest, config, args.output, targets=args.targets,
                                 max_runs=args.max_runs, execute=not args.plan_only, tns=True,
-                                progress=lambda line: print(line, flush=True))
+                                display=args.display, progress=lambda line: print(line, flush=True))
         elif args.command == "summarize":
-            summary = summarize_output(args.output, refresh_tns=args.refresh_tns)
+            summary = summarize_output(args.output, refresh_tns=args.refresh_tns, display=args.display)
         else:
             summary = run_batch(args.manifest, args.config, args.output, targets=args.targets,
                                 max_runs=getattr(args, "max_runs", None), execute=args.command == "run", tns=True,
-                                progress=lambda line: print(line, flush=True))
+                                display=args.display, progress=lambda line: print(line, flush=True))
         print(json.dumps({"output": str(args.output.resolve()), "objects": len(summary["objects"]), 'tns': summary.get('tns'),
                           "runs": summary["run_counts"], "all_runs_terminal": summary["all_runs_terminal"],
                           "html": summary["report"]["path"],

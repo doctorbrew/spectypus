@@ -202,3 +202,26 @@ def test_embedded_master_grid_keeps_folder_title(source_factory, manifest_factor
     evidence = Report(output / 'index.html').evidence
     assert evidence['title'] == '2026-10-28'
     assert read_json(output / 'summary.json')['report']['figures'] == 1
+
+
+def test_modes_share_evidence_and_review_identity(source_factory, manifest_factory, config_factory,
+                                                 fake_engine, tmp_path):
+    output = tmp_path / 'two-modes'
+    run_batch(manifest_factory([source_factory('a'), source_factory('b', flux=3)]),
+              config_factory(), output)
+    before = Report(output / 'index.html')
+    protected = {p: file_hash(p) for p in (output / 'attempts').rglob('*') if p.is_file()}
+    assert main(['summarize', '--output', str(output), '--display', 'atlas']) == 0
+    after = Report(output / 'index.html')
+    assert before.evidence == after.evidence
+    assert json.loads(before.log_text) == json.loads(after.log_text)
+    html = (output / 'index.html').read_text()
+    assert '/ SpectralAtlas' in html and 'id="atlas-search"' in html
+    assert html.count('class="atlas-object"') == 1
+    assert html.count('class="atlas-epoch"') == 2
+    assert all(url[1:] in after.ids for url in after.links if url.startswith('#'))
+    assert protected == {p: file_hash(p) for p in protected}
+    summarize_output(output, display='report')
+    assert 'id="atlas-search"' not in (output / 'index.html').read_text()
+    with pytest.raises(ValueError, match='display'):
+        summarize_output(output, display='unknown')

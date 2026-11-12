@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spectypus"
-version = "0.1.0"
+version = "0.2.0"
 description = "Batch supernova spectral classification across engines and epochs"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,6 +12,7 @@ authors = [{name = "Avinash Singh"}]
 dependencies = []
 
 [project.optional-dependencies]
+links = ["h5py>=3,<4"]
 plots = ["matplotlib>=3.10,<4", "scipy>=1.15,<2", "SciencePlots>=2,<3", "pypalettes>=0.1,<1"]
 dev = ["pytest>=7", "build>=1"]
 ci = ["pytest-cov>=5,<8"]

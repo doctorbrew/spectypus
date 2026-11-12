@@ -215,7 +215,7 @@ def execute_one(run: dict, plan: dict, output: Path) -> dict:
     return record
 
 
-def _summarize(plan: dict, output: Path) -> dict:
+def _summarize(plan: dict, output: Path, *, display="report") -> dict:
     records, states, matches = {}, [], []
     for run in plan["runs"]:
         record = None if run["blocked_reason"] else current_record(output, run)
@@ -242,12 +242,14 @@ def _summarize(plan: dict, output: Path) -> dict:
     write_csv(output / "spectra.csv", summary["spectra"], ["object_id", "spectrum_id", "status", "proposed_class", "complete",
               "duplicate_of", "expected_engines", "contributing_engines", "support_mass", "abstention_mass", "ranked_classes", "engine_evidence", "diagnostic_fits", "frame_assumed", "frame_review_required"])
     from .reporting.report import _write_report
-    summary["report"] = _write_report(plan, records, states, output)
+    summary["report"] = _write_report(plan, records, states, output, display=display)
     write_json(output / "summary.json", summary)
     return summary
 
 
-def summarize_output(output: Path, *, tns: bool = False, refresh_tns: bool = False) -> dict:
+def summarize_output(output: Path, *, tns: bool = False, refresh_tns: bool = False, display: str = "report") -> dict:
+    if display not in {"report", "atlas"}:
+        raise ValueError("display must be report or atlas")
     output = Path(output).expanduser().resolve()
     with output_lock(output):
         plan = read_json(output / "plan.json")
@@ -259,16 +261,18 @@ def summarize_output(output: Path, *, tns: bool = False, refresh_tns: bool = Fal
         if tns or refresh_tns:
             from .reporting.metadata import fetch_tns
             metadata = fetch_tns(output, plan['spectra'], refresh=refresh_tns)
-        summary = _summarize(plan, output)
+        summary = _summarize(plan, output, display=display)
         if metadata is not None:
             summary['tns'] = metadata
         return summary
 
 
 def run_batch(manifest: Path, config: Path | dict, output: Path, *, targets: Path | None = None,
-              max_runs: int | None = None, execute: bool = True, progress=None, tns: bool = False) -> dict:
+              max_runs: int | None = None, execute: bool = True, progress=None, tns: bool = False, display: str = "report") -> dict:
     if max_runs is not None and (type(max_runs) is not int or max_runs < 1):
         raise ValueError("max_runs must be a positive integer")
+    if display not in {"report", "atlas"}:
+        raise ValueError("display must be report or atlas")
     output = Path(output).expanduser().resolve()
     with output_lock(output):
         plan = make_plan(manifest, config, targets)
@@ -278,7 +282,7 @@ def run_batch(manifest: Path, config: Path | dict, output: Path, *, targets: Pat
             from .reporting.metadata import fetch_tns
             metadata = fetch_tns(output, plan['spectra'])
         # A readable pending log exists even while the first fit is running.
-        _summarize(plan, output)
+        _summarize(plan, output, display=display)
         launched = reused = 0
         for run in plan["runs"]:
             if run["blocked_reason"]:
@@ -293,8 +297,8 @@ def run_batch(manifest: Path, config: Path | dict, output: Path, *, targets: Pat
             launched += 1
             if progress:
                 progress(f"{run['object_id']} / {run['spectrum_id']} / {run['engine']} {run['mode']}: {record['status']} ({record['elapsed_seconds']:.1f}s)")
-            _summarize(plan, output)
-        summary = _summarize(plan, output)
+            _summarize(plan, output, display=display)
+        summary = _summarize(plan, output, display=display)
         summary["invocation"] = {"executed": launched, "reused": reused, "execution_requested": execute,
                                  "max_runs": max_runs}
         if metadata is not None:

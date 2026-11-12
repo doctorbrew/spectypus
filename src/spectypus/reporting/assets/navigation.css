@@ -1,0 +1,13 @@
+.atlas-layout { display:grid; grid-template-columns:220px minmax(0,1fr); gap:24px; }
+.atlas-sidebar { position:sticky; top:12px; align-self:start; max-height:95vh; overflow:auto; }
+.atlas-sidebar input { width:100%; box-sizing:border-box; }
+.atlas-sidebar ul { list-style:none; padding:0; }
+.atlas-sidebar nav, .atlas-sidebar a { display:block; }
+.atlas-sidebar li { margin:8px 0; }
+.atlas-content { min-width:0; }
+.atlas-epoch { margin:16px 0; }
+.atlas-epoch > summary { cursor:pointer; }
+@media(max-width:800px) {
+ .atlas-layout { grid-template-columns:minmax(0,1fr); }
+ .atlas-sidebar { position:static; max-height:220px; }
+}
