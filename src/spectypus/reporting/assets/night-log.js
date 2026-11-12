@@ -3,6 +3,7 @@
   if (!element) return;
   const baseline = JSON.parse(element.textContent);
   const inputs = [...document.querySelectorAll('#night-log input[data-key]')];
+  const selections = [...document.querySelectorAll('#night-log select[data-engine]')];
   const status = document.querySelector('#night-log-status');
   const storageKey = 'spectypus-night-log:' + baseline.identity;
   const original = inputs.map(input => input.value);
@@ -12,6 +13,12 @@
       const record = baseline.records.find(r => `c${r.campaign}:${r.source.spectrum_id}` === key);
       const row = {key, Name: record.source.object_id};
       inputs.filter(i => i.dataset.key === key).forEach(i => row[i.dataset.field] = i.value);
+      row.plot_selections = {};
+      selections.filter(s => s.dataset.key === key).forEach(s => {
+        if (!s.value) return;
+        const [execution_id, rank] = s.value.split(':');
+        row.plot_selections[s.dataset.engine] = {execution_id, rank:Number(rank)};
+      });
       return row;
     });
     return {schema:'spectypus-night-log/1', report_identity:baseline.identity,
@@ -27,7 +34,15 @@
       if (typeof row[input.dataset.field] !== 'string') throw Error('Invalid log field');
       return row[input.dataset.field];
     });
+    const chosen = selections.map(select => {
+      const row = log.rows.find(r => r.key === select.dataset.key);
+      const match = row.plot_selections?.[select.dataset.engine];
+      const value = match ? `${match.execution_id}:${match.rank}` : '';
+      if (![...select.options].some(o => o.value === value)) throw Error('Selected match is unavailable in this report');
+      return value;
+    });
     inputs.forEach((input, index) => input.value = values[index]);
+    selections.forEach((select, index) => select.value = chosen[index]);
   }
   function cache() {
     try { localStorage.setItem(storageKey, JSON.stringify(collect())); return true; }
@@ -37,7 +52,7 @@
     const cached = localStorage.getItem(storageKey);
     if (cached) { restore(JSON.parse(cached)); status.textContent = 'Browser draft restored · Save log to keep a file'; }
   } catch { inputs.forEach((input, index) => input.value = original[index]); }
-  inputs.forEach(input => input.addEventListener('input', () => {
+  [...inputs, ...selections].forEach(input => input.addEventListener('input', () => {
     status.textContent = cache() ? 'Draft saved in browser · Save log to keep a file' : 'Unsaved changes · Save log to keep a file';
   }));
   function download(text, name, type) {
@@ -93,5 +108,30 @@
     try { restore(JSON.parse(await event.target.files[0].text())); cache(); status.textContent = 'Reviewer log loaded'; }
     catch (error) { status.textContent = 'Log not loaded: ' + error.message; }
     event.target.value = '';
+  });
+  document.querySelector('#make-night-plots').addEventListener('click', async event => {
+    const log = collect();
+    if (!log.rows.some(row => Object.keys(row.plot_selections).length)) {
+      status.textContent = 'Choose a configuration and rank for SNID-SAGE or NGSF first'; return;
+    }
+    const button = event.currentTarget;
+    button.disabled = true; status.textContent = 'Making selected JPGs…';
+    const results = document.querySelector('#night-plot-results'); results.replaceChildren();
+    try {
+      if (!window.SpectypusPlots) throw Error('This HTML needs its offline plot exporter');
+      const result = await window.SpectypusPlots.make(log, baseline);
+      result.files.forEach(file => {
+        const link = document.createElement('a'); link.textContent = file.filename;
+        link.href = file.url; link.download = file.filename;
+        results.appendChild(link);
+      });
+      cache(); status.textContent = result.saved
+        ? `Saved ${result.files.length} JPGs in ${result.folder}`
+        : `Prepared ${result.files.length} JPG downloads · save them beside index.html`;
+    } catch (error) {
+      status.textContent = error.name === 'AbortError' ? 'Save cancelled · selections retained' : error.message;
+      cache();
+    }
+    finally { button.disabled = false; }
   });
 })();

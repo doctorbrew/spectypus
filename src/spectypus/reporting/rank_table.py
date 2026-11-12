@@ -59,7 +59,7 @@ def candidate_rows(run, locations=None):
     rows = []
     for match in run['matches']:
         native = match.get('native', {})
-        score = decimal_cell(match['score']) + ('' if match['qualified'] else '<br><span class="bad">Unqualified</span>')
+        score = decimal_cell(match['score']) + ('' if match['qualified'] else '<br><span class="bad">Bad match</span>')
         row = [h(match['rank']), template_cell(match, locations.get(str(match['rank']))),
                decimal_cell(match['redshift']), score]
         if run['engine'] == 'ngsf':

@@ -32,5 +32,7 @@ paths are a [one-time installation setting](docs/USAGE.md#nightly-folder-command
 
 Open `index.html`: six-panel JPGs, matches and an editable final log (JSON/CSV).
 TNS discovery dates are fetched when its bot credentials are configured.
-It updates automatically; no server is needed.
+It updates automatically; no server is needed for viewing or saving the log.
+For single-match JPGs, select each tool's configuration/rank in the final log and
+click **Make plots**. Choose the report folder when prompted, or save the downloads there.
 All options: `spectypus night --help`.

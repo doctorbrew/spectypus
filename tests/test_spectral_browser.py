@@ -494,7 +494,7 @@ def test_compact_rank_table_precision_subtype_phase_and_galaxy(tmp_path):
     markup = candidate_rows(run, {'1': {'path': str(path)}})
     parser = BrowserHTML(); parser.feed('<section data-execution="test">' + markup + '</section>')
     rows = parser.rank_tables[0]['rows']
-    assert [c['text'] for c in rows[1]] == ['1', 'SN2012dn (Ia-pec, +5d)', '0.123', '0.000Unqualified', '-0.2', 'SB2 (5%)']
+    assert [c['text'] for c in rows[1]] == ['1', 'SN2012dn (Ia-pec, +5d)', '0.123', '0.000Bad match', '-0.2', 'SB2 (5%)']
     assert rows[1][1]['links'] == [path.as_uri()]
     assert 'title="0.00012345"' in markup  # native precision retained despite display rounding
     assert m['score'] == .00012345 and m['native']['Frac(gal)'] == '.05'

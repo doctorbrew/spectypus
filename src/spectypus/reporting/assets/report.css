@@ -14,6 +14,8 @@
 .report-fits .downloads { margin: 12px 0; }
 .report-back { font-size: 12px; }
 #night-log input[data-key] { width: 100%; min-width: 110px; padding: 6px; border: 1px solid var(--border); background: var(--panel); border-radius: 4px; }
+#night-log select[data-engine] { max-width: 300px; min-width: 180px; padding: 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); }
+#night-plot-results a { display: block; margin-top: 6px; }
 .log-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; align-items: center; }
 #night-log-copy-text { box-sizing: border-box; width: 100%; margin-top: 12px; font-family: monospace; }
 .log-actions button { padding: 7px 12px; border: 1px solid var(--border); background: var(--panel); border-radius: 5px; cursor: pointer; }

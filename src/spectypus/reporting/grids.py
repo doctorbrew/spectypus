@@ -35,7 +35,7 @@ def legend_labels(request, candidate):
     return_target = None
     if number(source.get('discovery_mjd')) is not None and number(source.get('mjd')) is not None:
         delta = number(source['mjd']) - number(source['discovery_mjd'])
-        return_target = f'{source["object_id"]}({delta:+.1f}d since disc.)'
+        return_target = f'{source["object_id"]}({delta:+.1f}d since discovery)'
     elif phase is not None:
         target_phase = f'{phase:+.1f} d rest'
     else:

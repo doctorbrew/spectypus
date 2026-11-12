@@ -45,3 +45,14 @@ def test_svg_escapes_text_and_keeps_verifiable_source():
     root=ET.fromstring(svg)
     assert 'abc123' in root.attrib['aria-label']
     assert '1 &lt; 2 &amp; 3' in svg
+
+
+def test_compact_success_badge_retains_details_and_does_not_hide_failures():
+    root = ET.fromstring(metrics.render('tests', '234 passed, 4 skipped', 'brightgreen', 'verified-run'))
+    visible = [node.text for node in root.iter() if metrics.tag(node) == 'text']
+    assert '234 passed' in visible and all('skipped' not in text for text in visible)
+    assert '234 passed, 4 skipped' in root.attrib['aria-label']
+    assert 'verified-run' in root.attrib['aria-label']
+    assert int(root.attrib['width']) == 110
+    failed = ET.fromstring(metrics.render('tests', '234 passed, 1 failed, run failed', 'red', 'failed-run'))
+    assert any('1 failed, run failed' in (node.text or '') for node in failed.iter() if metrics.tag(node) == 'text')

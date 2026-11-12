@@ -165,7 +165,7 @@ def test_non_success_states_are_distinct(source_factory, manifest_factory, confi
     assert evidence['counts'][outcome] == 1
     if outcome == 'no_good_match':
         assert evidence['records'][0]['runs'][0]['matches'][0]['qualified'] is False
-        assert 'Unqualified' in (output / 'index.html').read_text()
+        assert 'Bad match' in (output / 'index.html').read_text()
 
 
 def test_automatic_draft_priority_and_fixed_z_provenance():

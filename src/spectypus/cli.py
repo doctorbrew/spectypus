@@ -60,8 +60,16 @@ def main(argv: list[str] | None = None) -> int:
     review = sub.add_parser("review", help="open a local read-only results website")
     review.add_argument("--output", type=Path, required=True)
     review.add_argument("--port", type=int, default=8013)
+    selected = sub.add_parser('plot-log', help='export selected matches from a saved reviewer JSON log; never refit')
+    selected.add_argument('--output', type=Path, required=True)
+    selected.add_argument('--log', type=Path, required=True)
     args = parser.parse_args(argv)
     try:
+        if args.command == 'plot-log':
+            from .io import read_json
+            from .reporting.selected import export_selected
+            print(json.dumps(export_selected(args.output, read_json(args.log)), sort_keys=True))
+            return 0
         if args.command == "review":
             try:
                 import uvicorn

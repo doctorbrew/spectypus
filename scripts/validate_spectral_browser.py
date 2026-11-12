@@ -255,7 +255,7 @@ def validate(root):
                     from spectypus.phases import number
                     for index, field in ((2, 'redshift'), (3, 'score')):
                         v = number(m.get(field)); expected = f'{v:.3f}' if v is not None else '—'
-                        if index == 3 and not m['qualified']: expected += 'Unqualified'
+                        if index == 3 and not m['qualified']: expected += 'Bad match'
                         assert cells[index]['text'] == expected
                     if run['engine'] == 'ngsf':
                         native = m['native']; fraction = number(native.get('Frac(gal)'))

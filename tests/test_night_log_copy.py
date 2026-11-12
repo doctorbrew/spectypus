@@ -32,7 +32,7 @@ const context = {console, setTimeout, localStorage:{getItem:()=>null,setItem(){}
   navigator:{clipboard:{writeText:async text => {
     if (mode !== 'clipboard') throw Error('blocked'); copied = text;
   }}},
-  document:{querySelector:element, querySelectorAll:()=>inputs,
+  document:{querySelector:element, querySelectorAll:selector=>selector.includes('select[')?[]:inputs,
     execCommand(command) {
       if (command !== 'copy') throw Error('unexpected command');
       if (mode === 'manual') return false;

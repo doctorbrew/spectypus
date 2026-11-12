@@ -23,7 +23,7 @@ def test_discovery_legend_and_sourced_flux_units(tmp_path):
     assert flux_label({'flux_unit': 'mJy'}) == 'Flux (mJy)'
     assert legend_labels({'source': row}, {'template': 'SN2007bm', 'native_class': 'Ia',
                          'native_subtype': 'Ia-norm', 'phase_days': -9.3}) == (
-        'AT2026agwm(+2.1d since disc.)', 'SN2007bm — Ia / Ia-norm (-9.3 d)')
+        'AT2026agwm(+2.1d since discovery)', 'SN2007bm — Ia / Ia-norm (-9.3 d)')
 
 
 def test_master_cache_and_metadata_refresh_reuse_numerical_request(tmp_path, monkeypatch):

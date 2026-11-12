@@ -161,8 +161,8 @@ embedded with enlargement and downloads. All JPGs are 300 dpi; no PDFs are
 generated. Grids have three rows and two columns, 1000-Å major wavelength ticks,
 22-pt axis labels, tick labels and rank text, with 19.8-pt legends. Rank text is
 inset at 7% of the panel width. Legends sit above each panel; the matched name,
-native type and phase stay on one line. Target legends abbreviate discovery
-phase as `Name(+2.1d since disc.)`.
+native type and phase stay on one line. Target legends show discovery
+phase as `Name(+2.1d since discovery)`.
 Flux labels use declared `flux_unit`
 metadata (EFOSpec's physical-flux export contract supplies erg s⁻¹ cm⁻² Å⁻¹);
 unspecified inputs say “input units” without assuming physical calibration.
@@ -182,6 +182,42 @@ browsers offer selected text for manual copy. **Download CSV** exports those edi
 as `night-log.csv` for spreadsheets. **Save log** saves a reloadable JSON file;
 **Load log** restores that JSON for the same spectra/fits, not a CSV or new spectra.
 These controls never alter native fit results.
+Candidates that fail the acceptance checks are labelled **Bad match** in tables
+and selectors; their saved `qualified` flags and automatic-summary rules remain unchanged.
+
+Open `index.html` directly. In the final log, choose one configuration/rank
+under **SNID-SAGE match** and/or **NGSF match** for each spectrum, then **Make plots**.
+Each selector lists available ranks 1–6 across fixed/free-z fits, with the matched
+name, native type and phase. Nothing is selected automatically; `None` skips that
+tool. Each selection extracts a single-panel 300-dpi JPG from the existing embedded
+master image, retaining its original plot pixels, legend, ticks, labels and units:
+`PLOT_Classification_SNID-SAGE_<SNName>.jpg` or
+`PLOT_Classification_NGSF_<SNName>.jpg`. Repeated object names receive a stable
+spectrum suffix. In browsers with folder access, choose the folder containing
+this report's `index.html` and allow saving. Other browsers prepare ordinary JPG
+downloads, with links for individual saves; choose the report folder in the save
+dialog. No server, terminal command or network access is needed for HTML export.
+Folder access is browser-dependent; Chrome/Edge support the directory picker.
+
+Direct folder saves record hashes/selections in `classification-plot-selections.json`
+and protect edited or unrelated existing files. Changing a rank replaces the
+tool/spectrum's prior managed export. Deselecting does not delete saved files.
+Browser downloads follow the browser's normal naming/overwrite behavior.
+
+**Save log / Load log** also retain these choices in JSON. CSV and copied text
+remain the five-column classification table. For optional scripted export through
+the Python renderer, a saved JSON log can also be used with:
+
+```bash
+spectypus plot-log --output /path/to/results --log /path/to/night-log.json
+```
+
+Neither path refits or replays preprocessing. Editing the classification table
+does not relabel native template evidence. Old reports need one
+`spectypus summarize --output /path/to/results` refresh: plotting dependencies
+measure the existing master layout once and cache a small pixel map. Master JPGs
+and numerical requests are reused; no collection of individual JPGs is generated
+in advance. Subsequent cached refreshes require no plotting runtime.
 
 ### Discovery and host metadata
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 from html import escape
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -130,9 +131,15 @@ def render(label: str, message: str, color: str, source: str) -> str:
     """Render private report badges in the compact Shields flat style."""
     colors = {'red':'#e05d44','brightgreen':'#4c1','yellow':'#dfb317',
               'lightgrey':'#9f9f9f','blue':'#007ec6'}
+    title = escape(f'{label}: {message}. Source: {source}', quote=True)
+    # Keep complete report counts in the tooltip/JSON, without widening a
+    # successful test badge for skips. Never hide failures or unavailable data.
+    if label == 'tests' and color == 'brightgreen':
+        passed = re.fullmatch(r'(\d+ passed)(?:, \d+ skipped)?', message)
+        if passed:
+            message = passed.group(1)
     left, right = 10+6*len(label), 10+6*len(message)
     width = left+right
-    title = escape(f'{label}: {message}. Source: {source}', quote=True)
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="20" '
         f'role="img" aria-label="{title}"><title>{title}</title>'
         '<linearGradient id="s" x2="0" y2="100%">'

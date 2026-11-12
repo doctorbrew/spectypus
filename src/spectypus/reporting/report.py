@@ -11,6 +11,7 @@ from .presentation import (
 from .rank_table import candidate_rows
 from .metadata import display_sources
 from .plots import ensure_grid
+from .offline_plots import ensure_map
 
 
 def _write_report(plan, records, states, output):
@@ -78,11 +79,12 @@ def _write_report(plan, records, states, output):
                 figure = ensure_grid(output, source, run, records.get(run['execution_id']), attempts[run['execution_id']])
                 run['figure'] = figure
                 if figure['status'] == 'ready':
+                    figure['browser_export'] = ensure_map(output, figure)
                     folder = Path(figure['directory'])
                     jpg = (folder / figure['jpg']).read_bytes()
                     figure_title = f'{source["object_id"]} / {engine} / {run["mode"]}-z: six ranked matches'
                     card += (f'<figure><button type="button" class="enlarge" aria-label="Enlarge {h(figure_title)}">'
-                             f'<img src="{data_uri(jpg, "image/jpeg")}" alt="{h(figure_title)}" loading="lazy"></button></figure>')
+                             f'<img id="master-{h(run["execution_id"])}" src="{data_uri(jpg, "image/jpeg")}" alt="{h(figure_title)}" loading="lazy"></button></figure>')
                     card += '<div class="downloads">' + download_bytes(jpg, source['object_id'] + '-' + run['engine'] + '-' + run['mode'] + '.jpg', 'JPG · 300 dpi', 'image/jpeg')
                     card += download_bytes((folder / 'request.json.gz').read_bytes(), run['execution_id'] + '.json.gz', 'Plot data', 'application/gzip') + '</div>'
                 else:
@@ -130,9 +132,14 @@ def _write_report(plan, records, states, output):
                                                     if issues else '<p>No outstanding fit issues.</p>') + '</section>'
     body += editable_log(report_records, identity)
     html = page(title, body, display='Classification Report', extra_css=(ASSETS / 'report.css').read_text())
-    html = html.replace('</body>', '<script>' + (ASSETS / 'night-log.js').read_text() + '</script></body>')
+    scripts = ''.join('<script>' + (ASSETS / name).read_text() + '</script>'
+                      for name in ('selected-plots.js', 'night-log.js'))
+    html = html.replace('</body>', scripts + '</body>')
     destination = output / 'index.html'
     atomic_text(destination, html)
+    evidence_path = output / 'classification-report-evidence.json'
+    atomic_text(evidence_path, canonical(evidence))
     return {'path': str(destination), 'sha256': file_hash(destination), 'identity': identity,
+            'evidence_sha256': file_hash(evidence_path),
             'spectra': len(sources), 'fits': len(runs), 'states': counts,
             'figures': sum(r.get('figure', {}).get('status') == 'ready' for r in runs)}

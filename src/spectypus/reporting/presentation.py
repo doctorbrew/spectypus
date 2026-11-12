@@ -169,14 +169,35 @@ def editable_log(records, identity):
         row = []
         for field, value in zip(SUMMARY_HEADERS, values):
             row.append(f'<input aria-label="{h(values[0])} {field}" data-key="{h(ident)}" data-field="{field}" value="{h(value)}">')
+        from .rank_table import compact_identity
+        for engine, label in [('snid_sage', 'SNID-SAGE'), ('ngsf', 'NGSF')]:
+            options = ['<option value="">None</option>']
+            for run in runs:
+                if run['engine'] != engine or not run.get('execution_id'):
+                    continue
+                export = run.get('figure', {}).get('browser_export', {})
+                available = {p['rank'] for p in export.get('panels', [])} if export.get('status') == 'ready' else set()
+                for match in run.get('matches', [])[:6]:
+                    if match['rank'] not in available:
+                        continue
+                    option = f'{run["execution_id"]}:{match["rank"]}'
+                    text = f'{run["mode"]}-z · rank {match["rank"]} · {compact_identity(match)}'
+                    if not match.get('qualified'):
+                        text += ' · bad match'
+                    options.append(f'<option value="{h(option)}">{h(text)}</option>')
+            row.append(f'<select aria-label="{h(values[0])} {label} match" data-key="{h(ident)}" '
+                       f'data-engine="{engine}"' + (' disabled' if len(options) == 1 else '') + '>' + ''.join(options) + '</select>')
         rows.append(row)
-    payload = json.dumps({'identity': identity, 'records': records}, ensure_ascii=True).replace('<', chr(92) + 'u003c')
-    return ('<section id="night-log"><h2>Final night log</h2>' + table(SUMMARY_HEADERS, rows)
+    from .selected import export_names
+    payload = json.dumps({'identity': identity, 'records': records, 'plot_names': export_names(records)}, ensure_ascii=True).replace('<', chr(92) + 'u003c')
+    return ('<section id="night-log"><h2>Final night log</h2>' + table([*SUMMARY_HEADERS, 'SNID-SAGE match', 'NGSF match'], rows)
             + '<div class="log-actions"><button type="button" id="save-night-log" title="Save reviewer edits as a reloadable JSON file">Save log</button>'
             + '<button type="button" id="csv-night-log" title="Export the current edited table as night-log.csv">Download CSV</button>'
             + '<button type="button" id="copy-night-log">Copy text</button>'
+            + '<button type="button" id="make-night-plots">Make plots</button>'
             + '<label title="Restore a JSON log saved for these spectra and fits">Load log <input type="file" id="load-night-log" accept="application/json,.json"></label></div>'
             + '<textarea id="night-log-copy-text" aria-label="Final night log as text" rows="7" readonly hidden></textarea>'
             + '<p id="night-log-status" class="muted" role="status">Automatic draft · edit before saving</p>'
+            + '<div id="night-plot-results"></div>'
             + '<noscript>Enable JavaScript to save reviewer edits.</noscript>'
             + '<script type="application/json" id="night-log-data">' + payload + '</script></section>')
