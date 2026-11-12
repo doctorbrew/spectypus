@@ -450,3 +450,28 @@ reports individual import times, and measures the source/bank fingerprint step.
 It does not classify spectra. The optional plots check uses
 `SPECTYPUS_PLOT_PYTHON` when set. An import failure must be repaired in the named
 interpreter; installing packages in a different Python will not fix it.
+
+## External-label evaluation
+
+Run `python -m spectypus.evaluation --help` for the read-only evaluation interface.
+Supply an accepted label JSON (`spectypus-evaluation-labels/1`) with physical
+object IDs, disjoint aliases, canonical class labels and independent reference
+URLs plus section/table locators; a JSON mapping of engine names to original
+bank directories; and a verified saved results directory. Output must be new:
+
+```sh
+python -m spectypus.evaluation --saved-output RESULTS   --labels reviewed-labels.json --banks engine-banks.json --output NEW_AUDIT
+```
+
+The evaluator never fits, edits attempts or guesses input frames. It selects the
+earliest finite-MJD supported, nonduplicate, nonprovisional spectrum per object
+before considering fit outcomes. It reports top-one/top-three class recovery,
+coverage, outcomes, confusion and conditional Wilson intervals separately by
+engine/redshift mode, retaining failures and missing inputs. Known template-name
+overlap and unverified bank identities are explicitly separated. Inspect sample
+selection and label provenance before interpreting any fraction. A positive-only
+sample cannot establish multiclass accuracy or false-positive performance.
+
+Historical normalized labels are retained alongside explicit native SLSN subtype
+results. Taxonomy /2 fixes generic SAGE `SLSN` with explicit `SLSN-I/II` subtype
+only for new parsing; summarizing old saved attempts does not migrate them.

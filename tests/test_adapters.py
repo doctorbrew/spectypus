@@ -109,3 +109,24 @@ def test_sage_fixed_zero_is_passed(tmp_path, config_factory):
 def test_invalid_configuration_rejected(config_factory, overrides):
     with pytest.raises(ValueError):
         load_config(config_factory(**overrides))
+
+
+@pytest.mark.parametrize('subtype,expected', [('SLSN-I','SLSN-I'),('SLSN-II','SLSN-II'),
+                                           ('',''),('Ic-norm',''),('unknown','')])
+def test_sage_generic_slsn_requires_explicit_physical_subtype(subtype, expected):
+    assert normalize_class('SLSN', subtype) == expected
+
+
+def test_sage_slsn_normalization_keeps_native_evidence(tmp_path):
+    import json
+    from conftest import sage_payload
+    path=tmp_path/'native.json'
+    payload=sage_payload(label='SLSN',subtype='SLSN-I',score=5.25)
+    path.write_text(json.dumps(payload))
+    rows,status=parse_sage(path)
+    assert status=='completed'
+    assert rows[0]['class_label']=='SLSN-I'
+    assert rows[0]['native_class']=='SLSN'
+    assert rows[0]['native_subtype']=='SLSN-I'
+    assert rows[0]['native']==payload['candidates'][0]
+    assert rows[0]['score']==5.25 and rows[0]['qualified'] is True

@@ -26,7 +26,7 @@ jobs:
           python -m venv "$RUNNER_TEMP/spectypus-wheel"
           "$RUNNER_TEMP/spectypus-wheel/bin/python" -m pip install dist/*.whl pytest
           mkdir "$RUNNER_TEMP/spectypus-tests"
-          cp tests/conftest.py tests/test_match_report.py tests/test_template_locations.py tests/test_diagnostics.py "$RUNNER_TEMP/spectypus-tests/"
+          cp tests/conftest.py tests/test_match_report.py tests/test_template_locations.py tests/test_diagnostics.py tests/test_evaluation.py "$RUNNER_TEMP/spectypus-tests/"
           cd "$RUNNER_TEMP/spectypus-tests"
           "$RUNNER_TEMP/spectypus-wheel/bin/python" -c "import spectypus; assert 'site-packages' in spectypus.__file__"
           "$RUNNER_TEMP/spectypus-wheel/bin/python" -m pytest -q

@@ -1,6 +1,6 @@
 """Conservative versioned aliases, retaining native class and subtype verbatim."""
 
-TAXONOMY_VERSION = "spectypus-taxonomy/1"
+TAXONOMY_VERSION = "spectypus-taxonomy/2"
 
 _ALIASES = {
     "Ia": ["Ia", "Ia-norm", "Ia norm", "Ia-pec", "Ia 91T-like", "Ia 91bg-like",
@@ -25,6 +25,10 @@ def normalize_class(native: str, subtype: str = "") -> str:
     """Map only enumerated labels. Unknown labels abstain in combined support."""
     subtype_class = LOOKUP.get(subtype.strip().casefold(), "")
     native_class = LOOKUP.get(native.strip().casefold(), "")
+    # SAGE stores the broad family and explicit hydrogen subtype separately.
+    # An untyped SLSN (or an unrelated subtype) must still abstain.
+    if native.strip().casefold() == "slsn" and subtype_class in {"SLSN-I", "SLSN-II"}:
+        return subtype_class
     # A recognized subtype can refine a generic native class, never overwrite
     # a different physical family (e.g. SLSN-I with an Ic-looking subtype).
     refinements = {"Ia": {"Ia", "Ia-CSM", "Ca-rich"}, "Ib": {"Ib", "Ibn", "Ca-rich"},

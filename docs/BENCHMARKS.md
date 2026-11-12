@@ -212,3 +212,16 @@ This is arithmetic replay, not a JAX classifier or production configuration.
 It excludes interpolation, template loading, native-table reconstruction and
 whole-search ranking. The `benchmark-jax` extra pins the tested JAX release for
 the project's Python 3.10 runtime; it does not promise other backends or GPUs.
+
+## Native loading profile (November 13 acceptance)
+
+`scripts/benchmarks/profile_loading.py` profiles one load in a configured engine
+interpreter. Use `--engine snid_sage|ngsf --config spectypus.local.json --output NEW`.
+Run under an external timeout and record source/bank hashes before and after.
+SAGE emits separate cProfile files for native prefetch workers. NGSF uses its
+native loading path but intercepts the first `core` entry before any fitting or
+result writing; parameters use a declared 10 Å grid from 3800–9000 Å, with galaxy
+line masking disabled. It uses the production bridge's isolated `np.math` alias.
+Do not interpret these configuration-specific loading times as full-fit speedups.
+The three-repeat audit and failed first compatibility probe are in
+`results/acceptance_20261113/`; exact findings and limits are in VALIDATION.

@@ -127,7 +127,7 @@
       });
       cache(); status.textContent = result.saved
         ? `Saved ${result.files.length} JPGs in ${result.folder}`
-        : `Prepared ${result.files.length} JPG downloads · save them beside index.html`;
+        : `Prepared ${result.files.length} JPG downloads · save beside index.html; if a download is missing, click its link below`;
     } catch (error) {
       status.textContent = error.name === 'AbortError' ? 'Save cancelled · selections retained' : error.message;
       cache();

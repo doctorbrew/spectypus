@@ -82,6 +82,6 @@ async function load(log) {
         assert result['status'] == 'Save cancelled · selections retained' and not result['files']
     else:
         assert result['status'] == ('Saved 2 JPGs in 2026-10-28' if mode == 'folder'
-                                    else 'Prepared 2 JPG downloads · save them beside index.html')
+                                    else 'Prepared 2 JPG downloads · save beside index.html; if a download is missing, click its link below')
         assert result['files'][0]['href'] == 'blob:snid'
         assert result['files'][0]['download'] == 'PLOT_Classification_SNID-SAGE_SN-A.jpg'
