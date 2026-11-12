@@ -67,6 +67,27 @@
     const rows = [columns, ...collect().rows.map(row => columns.map(c => row[c]))];
     download(rows.map(row => row.map(cell).join(',')).join('\r\n') + '\r\n', 'night-log.csv', 'text/csv');
   });
+  document.querySelector('#copy-night-log').addEventListener('click', async () => {
+    const columns = ['Name','Type','z','Phase','Survey'];
+    const rows = [columns, ...collect().rows.map(row => columns.map(c => String(row[c]).replace(/\s+/g, ' ').trim()))];
+    const widths = columns.map((_, i) => Math.max(...rows.map(row => row[i].length)));
+    const text = rows.map(row => row.map((cell, i) => cell.padEnd(widths[i])).join('  ').trimEnd()).join('\n');
+    const fallback = document.querySelector('#night-log-copy-text');
+    fallback.hidden = true;
+    try {
+      await navigator.clipboard.writeText(text);
+      status.textContent = 'Log copied as text';
+    } catch {
+      // Offline/file browsers may disallow the Clipboard API. Keep the exact
+      // current edits available for ordinary keyboard copy if both APIs fail.
+      fallback.value = text; fallback.hidden = false; fallback.focus(); fallback.select();
+      let copied = false;
+      try { copied = document.execCommand('copy'); } catch {}
+      fallback.hidden = copied;
+      if (copied) document.querySelector('#copy-night-log').focus();
+      status.textContent = copied ? 'Log copied as text' : 'Text selected below · press Command+C or Ctrl+C to copy';
+    }
+  });
   document.querySelector('#load-night-log').addEventListener('change', async event => {
     if (!event.target.files.length) return;
     try { restore(JSON.parse(await event.target.files[0].text())); cache(); status.textContent = 'Reviewer log loaded'; }

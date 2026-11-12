@@ -27,7 +27,7 @@ from spectypus.phases import phase_context, number
 from build_spectral_atlas import h, key, badge, page, table, count_text
 from spectral_atlas_presentation import AUTO_POLICY, write_classification_tables, SUMMARY_HEADERS, load_summaries, summary_key, summary_row, spectrum_heading
 
-ASSETS = ROOT / 'assets/spectralatlas'
+from spectypus.reporting.html import ASSETS
 
 
 def target_phases(source, context):
@@ -161,20 +161,7 @@ def prepare_browser(previous, root):
     return frozen
 
 
-def candidate_rows(run, locations=None):
-    from spectral_atlas_rank_table import template_cell, decimal_cell, galaxy_cell
-    locations = locations or {}
-    headers = ['Rank', 'Template', 'Fit z', 'Native score']
-    if run['engine'] == 'ngsf': headers += ['Aᵥ (mag)', 'Galaxy type (fraction)']
-    rows = []
-    for m in run['matches']:
-        native = m.get('native', {})
-        identity = template_cell(m, locations.get(str(m['rank'])))
-        score = decimal_cell(m['score']) + ('' if m['qualified'] else '<br><span class="bad">Unqualified</span>')
-        row = [str(m['rank']), identity, decimal_cell(m['redshift']), score]
-        if run['engine'] == 'ngsf': row += [h(native.get('A_v')), galaxy_cell(native)]
-        rows.append(row)
-    return table(headers, rows)
+from spectypus.reporting.rank_table import candidate_rows
 
 
 def sidebar(objects, selected, prefix):
@@ -273,7 +260,8 @@ def write_browser(frozen, root, results):
 
 
 def render_contract(root, jobs):
-    return {'plot_output': PLOT_OUTPUT, 'products': file_hash(ROOT / 'scripts/spectral_atlas_products.py'), 'atlas_limits': file_hash(ROOT / 'scripts/spectral_atlas_limits.py'), 'renderer': file_hash(ROOT / 'scripts/spectral_atlas_top5_figures.py'), 'full_observed': file_hash(ROOT / 'scripts/spectral_atlas_full_observed.py'), 'style': file_hash(ROOT / 'src/spectypus/plot_style.py'), 'limits': file_hash(ROOT / 'src/spectypus/fit_plots.py'), 'requests': {str(Path(j[0]).relative_to(root)): file_hash(Path(j[0])) for j in jobs}}
+    shared = ASSETS.parent
+    return {'plot_output': PLOT_OUTPUT, 'products': file_hash(shared / 'products.py'), 'atlas_limits': file_hash(shared / 'limits.py'), 'renderer': file_hash(shared / 'grids.py'), 'full_observed': file_hash(shared / 'display.py'), 'style': file_hash(ROOT / 'src/spectypus/plot_style.py'), 'limits': file_hash(ROOT / 'src/spectypus/fit_plots.py'), 'requests': {str(Path(j[0]).relative_to(root)): file_hash(Path(j[0])) for j in jobs}}
 
 
 def build(args):
@@ -322,13 +310,15 @@ def build(args):
 def publish(frozen, root, results):
     contract_path = root / 'render-contract.json'
     objects = write_browser(frozen, root, results)
+    layouts = {r.get('layout') for r in results.values() if r['status'] == 'ready'}
+    tick_sizes = {r.get('tick_label_points') for r in results.values() if r['status'] == 'ready'}
     manifest = {'plot_output': PLOT_OUTPUT, 'schema': frozen['schema'], 'created_at': frozen['created_at'], 'objects': len(objects), 'campaign_object_records': sum(len(s['summary']['objects']) for s in frozen['snapshots']),
                 'spectra': sum(len(s['spectra']) for s in frozen['snapshots']), 'fits': sum(len(s['runs']) for s in frozen['snapshots']),
                 'displayed_candidates': sum(len(r['matches']) for s in frozen['snapshots'] for r in s['runs']), 'saved_curves': sum(len(r['curve_ranks']) for s in frozen['snapshots'] for r in s['runs']),
                 'figures': len(results), 'unavailable_figures': sum(r['status'] != 'ready' for r in results.values()), 'source_export': frozen['previous_export'], 'presentation_source': frozen.get('presentation_source'),
-                'plot_presentation': {'top_k': 6, 'layout': '2x3-matches-only', 'tick_label_points': 13.5, 'savgol_width_angstrom': 10., 'panels_with_smoothing_support': sum(p.get('savgol_filtered_samples', 0) > 0 for r in results.values() for p in r.get('panels', [])), 'limit_rule': 'median50-sg50-central99-noise3-outward1.1', 'limit_smoothing_width_angstrom': 50., 'limit_percentiles': [0.5, 99.5], 'limit_noise_multiplier': 3., 'legend_native_type': True, 'raw_observed_colour': '0.5', 'raw_observed_alpha': .2, 'observed_display': '10 Angstrom SG over full staged input flux', 'observed_source': 'full-staged-input', 'model_display': 'unmasked verified native models in input flux units', 'model_masking': 'none', 'telluric_display': 'all saved samples; no additional display mask',
+                'plot_presentation': {'top_k': 6, 'layout': next(iter(layouts)) if len(layouts) == 1 else 'mixed', 'tick_label_points': next(iter(tick_sizes)) if len(tick_sizes) == 1 else None, 'savgol_width_angstrom': 10., 'panels_with_smoothing_support': sum(p.get('savgol_filtered_samples', 0) > 0 for r in results.values() for p in r.get('panels', [])), 'limit_rule': 'median50-sg50-central99-noise3-outward1.1', 'limit_smoothing_width_angstrom': 50., 'limit_percentiles': [0.5, 99.5], 'limit_noise_multiplier': 3., 'legend_native_type': True, 'raw_observed_colour': '0.5', 'raw_observed_alpha': .2, 'observed_display': '10 Angstrom SG over full staged input flux', 'observed_source': 'full-staged-input', 'model_display': 'unmasked verified native models in input flux units', 'model_masking': 'none', 'telluric_display': 'all saved samples; no additional display mask',
                                       'telluric_markers': 'short grey bars; no shaded blocks',
-                                      'legend_location': 'upper right', 'legend_shadow': False, 'y_label': 'Flux',
+                                      'legend_locations': sorted({p.get('legend_location', 'upper right') for r in results.values() for p in r.get('panels', []) if p['status'] == 'rendered'}), 'legend_shadow': False, 'y_labels': sorted({r.get('y_label', 'Flux') for r in results.values() if r['status'] == 'ready'}),
                                       'palette_reference': 'EFOSpec/scripts/preview_spectrum_style.py',
                                       'observed_colour': '#000000', 'model_colour': '#ef6666',
                                       'model_colour_definition': '60% xkcd:red mixed with 40% white, opaque'},
@@ -338,7 +328,7 @@ def publish(frozen, root, results):
         manifest['model_restoration_sha256'] = file_hash(root / 'model-restoration.json')
     manifest['rank_table'] = {'schema': 'spectypus-compact-ranks/1', 'redshift_decimals': 3, 'score_decimals': 3,
                              'galaxy_fraction': 'native Frac(gal), rounded integer percent',
-                             'formatter_sha256': file_hash(ROOT / 'scripts/spectral_atlas_rank_table.py')}
+                             'formatter_sha256': file_hash(ASSETS.parent / 'rank_table.py')}
     if (root / 'template-locations.json').exists():
         manifest['rank_table']['template_locations_sha256'] = file_hash(root / 'template-locations.json')
     if (root / 'jpg-migration.json').exists():
@@ -348,7 +338,8 @@ def publish(frozen, root, results):
     summaries = load_summaries(summary_path if summary_path.exists() else None, frozen)
     manifest['classification_tables'] = write_classification_tables(frozen, root, summaries)
     manifest['automatic_summary_policy'] = AUTO_POLICY
-    manifest['compact_presentation_sha256'] = file_hash(ROOT / 'scripts/spectral_atlas_presentation.py')
+    manifest['compact_presentation_sha256'] = file_hash(ASSETS.parent / 'presentation.py')
+    manifest['shared_reporting_sha256'] = {p.name: file_hash(p) for p in ASSETS.parent.glob('*.py')}
     if (root / 'classification-summary.json').exists():
         manifest['reviewed_summary_sha256'] = file_hash(root / 'classification-summary.json')
     write_json(root / 'manifest.json', manifest)

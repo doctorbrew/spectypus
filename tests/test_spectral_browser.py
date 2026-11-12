@@ -43,7 +43,7 @@ def test_sidebar_groups_same_sn_but_keeps_campaign_evidence(tmp_path, source_fac
     html = (root / 'index.html').read_text()
     assert html.count('data-sn=') == 1
     assert 'campaign 1' in html and 'campaign 2' in html
-    assert 'MJD 59010' in html and 'Discovery: —' in html
+    assert '59010.000' in html and 'Discovery MJD: —' in html
     assert '+9.1 d (rest)' not in html and 'Filename:' in html
     assert html.count('class="epoch"') == 2
     assert 'Saved model curves unavailable' in html
@@ -190,7 +190,20 @@ def test_match_grid_plots_full_input_including_fitter_masked_regions():
                'matches': [{'candidate': {'rank': i, 'template': 'SN1998bw', 'phase_days': 0}, 'curve': curve} for i in range(1, 7)]}
     fig, diagnostics = create_figure(request)
     try:
-        for ax in fig.axes:
+        for index, ax in enumerate(fig.axes):
+            assert ax.get_subplotspec().get_gridspec().get_geometry() == (3, 2)
+            np.testing.assert_allclose(np.diff(ax.xaxis.get_majorticklocs()), 1000.)
+            label_size = fig._supxlabel.get_fontsize()
+            assert label_size == fig._supylabel.get_fontsize() == 22.
+            assert ax.yaxis.get_offset_text().get_fontsize() == label_size
+            assert ax.get_legend().get_texts()[0].get_fontsize() == pytest.approx(label_size * .9)
+            assert all('\n' not in t.get_text() for t in ax.get_legend().get_texts())
+            assert ax.xaxis.get_major_ticks()[0].label1.get_fontsize() == label_size
+            rank = next(t for t in ax.texts if t.get_text().startswith('Rank '))
+            assert rank.get_fontsize() == label_size
+            assert rank.get_position()[0] == .07
+            assert ax.xaxis.get_major_ticks()[0].label1.get_visible() == (index >= 4)
+            assert ax.yaxis.get_major_ticks()[0].label1.get_visible() == (index % 2 == 0)
             np.testing.assert_array_equal(ax.lines[0].get_xdata(), raw[:, 0])
             np.testing.assert_array_equal(ax.lines[0].get_ydata(), raw[:, 1])
             assert ax.get_xlim() == pytest.approx((6800, 7200))
@@ -198,6 +211,7 @@ def test_match_grid_plots_full_input_including_fitter_masked_regions():
             assert ax.get_ylim()[0] <= .4 and ax.get_ylim()[1] >= 2.
             np.testing.assert_allclose(ax.lines[2].get_ydata(), [2., 2., 2.])
         assert all(p['observed_source'] == 'full-staged-input' for p in diagnostics)
+        assert fig._supylabel.get_text() == 'Flux (input units)'
     finally:
         plt.close(fig)
     request['display_transform']['scale'] = 100.

@@ -165,6 +165,7 @@ def build_report(source, output, *, spectrum_ids=(), campaigns=(), title=None, s
                 'curve_parameter_recoveries': [note for record in records for run in record['runs'] for note in notes[run['plot_key']]],
                 'presentation_sha256': {n: file_hash(ASSETS / n) for n in ('atlas.css', 'atlas.js', 'report.css', 'night-log.js')},
                 'builder_sha256': file_hash(Path(__file__)),
+                'shared_reporting_sha256': {p.name: file_hash(p) for p in ASSETS.parent.glob('*.py')},
                 'shared_components_sha256': {n: file_hash(ROOT / 'scripts' / n) for n in ('build_spectral_atlas.py', 'build_spectral_browser.py', 'spectral_atlas_rank_table.py', 'spectral_atlas_presentation.py')}}
     body = f'<p class="report-summary">{len(selected)} spectrum records · {figure_count} master grids · {h(count_text(states))}</p>'
     body += '<nav class="report-nav" aria-label="Report sections"><a href="#inventory">Spectrum inventory</a><a href="#spectra">Spectra &amp; matches</a><a href="#issues">Issues</a><a href="#night-log">Final night log</a></nav>'

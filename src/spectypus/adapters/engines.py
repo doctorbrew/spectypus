@@ -121,10 +121,13 @@ def build_command(run: dict, config: dict, directory: Path) -> tuple[list[str], 
     input_path = directory / "spectrum.txt"
     output = directory / "native"
     output.mkdir()
-    windows = config.get("telluric_windows", [])
+    telluric_windows = config.get("telluric_windows", [])
+    input_windows = run.get("input_mask_windows", [])
+    windows = sorted(telluric_windows + input_windows)
     write_json(directory / "spectral_features.json", {
         "backend": cfg.get("backend", "native"),
-        "telluric_windows": windows, "wavelength_frame": "observer", "wavelength_unit": "angstrom",
+        "telluric_windows": telluric_windows, "input_mask_windows": input_windows,
+        "wavelength_masks": windows, "wavelength_frame": "observer", "wavelength_unit": "angstrom",
         "host_lines_masked": False, "supplied_redshift": run["redshift"],
         "save_fit_curves": config.get("save_fit_curves", False), "top_n": config["top_n"],
         "treatment": "SAGE native mask-aware preprocessing; NGSF object and template grid exclusion"})

@@ -39,7 +39,7 @@ spectypus = "spectypus.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-spectypus = ["web/*.html", "web/*.css", "web/*.js", "web/*.png"]
+spectypus = ["web/*.html", "web/*.css", "web/*.js", "web/*.png", "reporting/assets/*.css", "reporting/assets/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

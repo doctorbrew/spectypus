@@ -135,12 +135,12 @@ def validate(root):
                     if raw['available']:
                         assert hashlib.sha256(raw['contents'].encode()).hexdigest() == raw['sha256'] == run['artifacts']['spectrum.txt']
                         assert raw['wavelength_frame'] == 'observer' and raw['wavelength_unit'] == 'angstrom'
-                        if manifest['plot_presentation'].get('layout') == '2x3-matches-only':
+                        if manifest['plot_presentation'].get('layout') in {'2x3-matches-only', '3x2-matches-only'}:
                             assert 'input_spectrum' not in result
-                            assert result['layout'] == '2x3-matches-only'
+                            assert result['layout'] == manifest['plot_presentation']['layout']
                             for panel in result['panels']:
                                 if panel['status'] != 'rendered': continue
-                                assert panel['tick_label_points'] == 13.5
+                                assert panel['tick_label_points'] == manifest['plot_presentation']['tick_label_points']
                                 assert panel['savgol_width_angstrom'] == manifest['plot_presentation']['savgol_width_angstrom']
                                 if manifest['plot_presentation'].get('observed_display'):
                                     assert panel['raw_observed_alpha'] == .2
@@ -225,7 +225,10 @@ def validate(root):
         for href in p.links + p.images:
             url = urlsplit(href)
             if url.scheme == 'file':
-                assert href in allowed_template_urls, 'Unverified external template link'
+                source_paths = {Path(source['path']).resolve() for snapshot in frozen['snapshots']
+                                for source in snapshot['spectra'] if source.get('path')}
+                source_urls = {path.as_uri() for path in source_paths if path.is_file()}
+                assert href in allowed_template_urls | source_urls, 'Unverified external template or source-spectrum link'
                 continue
             assert not unquote(url.path).lower().endswith('.pdf'), 'PDF link'
             assert not url.scheme and not url.netloc, f'Nonlocal asset/navigation: {href}'

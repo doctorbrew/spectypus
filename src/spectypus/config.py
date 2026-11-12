@@ -13,7 +13,7 @@ EXAMPLE = {
     "top_n": 10,
     "timeout_seconds": 600,
     "telluric_windows": [],
-    "save_fit_curves": False,
+    "save_fit_curves": True,
     "free_redshift": {"min": 0.0, "max": 1.0, "step": 0.01},
     "engines": {
         "snid_sage": {"enabled": True, "python": "/path/to/classify/bin/python",

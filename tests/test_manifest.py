@@ -63,6 +63,34 @@ def test_rest_nm_transform_once_preserves_negative_flux(tmp_path):
     assert path.read_text().startswith("# wave")
 
 
+def test_masked_flux_staging_preserves_values_and_scales_gap_cells(tmp_path):
+    path = tmp_path / 'masked.asci'
+    original = '300 nan\n400 -2\n500 nan\n600 inf\n700 3\n800 4\n900 nan\n'
+    path.write_text(original)
+    row = {'path': str(path), 'wavelength_frame': 'rest', 'wavelength_unit': 'nm',
+           'redshift': .5, 'nonfinite_policy': 'mask'}
+    content, report = spectrum_data(row)
+    assert content == '6000 -2\n10500 3\n12000 4\n'
+    assert report['input_mask_windows'] == [[4500, 5250], [6750, 9750], [12750, 13500]]
+    assert [s['line'] for s in report['excluded_samples']] == [1, 3, 4, 7]
+    assert report['original_samples'] == 7 and report['samples'] == 3
+    assert path.read_text() == original
+    # Different missing support cannot be suppressed as a duplicate input.
+    other = tmp_path / 'other.asci'
+    other.write_text('400 -2\n700 3\n800 4\n')
+    _, other_report = spectrum_data({**row, 'path': str(other)})
+    assert report['numeric_sha256'] != other_report['numeric_sha256']
+
+
+@pytest.mark.parametrize('bad', ['nan 2', '0 nan', '4000 broken', '4000 nan\n4000 1'])
+def test_mask_policy_does_not_hide_invalid_wavelengths_or_malformed_values(tmp_path, bad):
+    path = tmp_path / 'bad.txt'
+    path.write_text(bad + '\n5000 2\n6000 3\n')
+    with pytest.raises(ValueError):
+        spectrum_data({'path': str(path), 'wavelength_frame': 'observer', 'wavelength_unit': 'angstrom',
+                       'nonfinite_policy': 'mask'})
+
+
 @pytest.mark.parametrize("row", ["4000,,0.1", ",4,0.1"])
 def test_empty_csv_wavelength_or_flux_never_shifts_uncertainty(row, source_factory, manifest_factory):
     from pathlib import Path

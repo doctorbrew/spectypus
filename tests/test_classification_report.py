@@ -216,8 +216,9 @@ def test_compact_fields_do_not_invent_host_survey_instrument_or_spectral_z():
     values, _ = summary_values(source, [])
     assert values == ['SN2018avk', '—', '—', '—', '—']
     heading, filename = spectrum_heading(source)
-    assert 'Discovery: —' in heading and 'unknown-instrument' not in heading
-    assert filename == 'Filename: NOT.dat'
+    assert heading == source['object_id'] and 'unknown-instrument' not in heading
+    assert 'Discovery MJD: —' in filename and 'Observed MJD:' in filename
+    assert filename.endswith('Filename: NOT.dat')
     run = {'execution_id': 'fixed', 'mode': 'fixed', 'record_sha256': 'sha',
            'matches': [{'rank': 1, 'native_class': 'Ia', 'redshift': .132, 'phase_days': 0}]}
     review = {'execution_id': 'fixed', 'record_sha256': 'sha', 'rank': 1}

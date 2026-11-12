@@ -7,12 +7,10 @@ current attempt is read. Retained trials and original products are never changed
 from __future__ import annotations
 
 import argparse
-import base64
 from collections import Counter, defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 import hashlib
-from html import escape
 import json
 import math
 import os
@@ -31,7 +29,7 @@ from spectypus.phases import phase_context
 from spectypus.pipeline import SCHEMA, current_record
 from spectypus.review import compact_record
 
-ASSETS = ROOT / 'assets' / 'spectralatlas'
+from spectypus.reporting.html import ASSETS, h, table, badge, page, data_uri, download_bytes
 BAD = {'failed', 'blocked', 'invalid_evidence', 'unavailable'}
 
 
@@ -43,21 +41,14 @@ def key(value):
     return re.sub(r'[^A-Za-z0-9_-]', '-', value)[:50] + '-' + hashlib.sha256(value.encode()).hexdigest()[:10]
 
 
-def h(value):
-    return escape('unknown' if value is None or value == '' else str(value), quote=True)
 
 
 def count_text(counts):
     return ' · '.join(f'{value:,} {name.replace("_", " ")}' for name, value in sorted(counts.items()))
 
 
-def data_uri(data, mime):
-    return f'data:{mime};base64,' + base64.b64encode(data).decode()
 
 
-def download_bytes(data, filename, label, mime='application/json'):
-    checksum = hashlib.sha256(data).hexdigest()
-    return f'<a download="{h(filename)}" data-sha256="{checksum}" href="{data_uri(data, mime)}">{h(label)}</a>'
 
 
 def download(path, label):
@@ -154,22 +145,10 @@ def capture(source_dir, dest, label):
     return result
 
 
-def page(title, body, stamp, back='', *, display='SpectralAtlas', extra_css=''):
-    css = (ASSETS / 'atlas.css').read_text() + extra_css
-    js = (ASSETS / 'atlas.js').read_text()
-    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{h(title)} · {h(display)}</title><style>{css}</style></head>
-<body><main><header><a class="brand" href="{back or '#top'}">Spectypus <span>/ {h(display)}</span></a></header>
-<div id="top"><h1>{h(title)}</h1></div>{body}
-</main>
-<dialog aria-label="Enlarged spectrum figure"><button type="button" class="close">Close figure</button><button type="button" class="zoom" aria-pressed="false">Zoom to full resolution</button><img alt=""><p></p></dialog><script>{js}</script></body></html>'''
 
 
-def table(headers, rows):
-    return '<div class="table-wrap"><table><thead><tr>' + ''.join(f'<th scope="col">{h(c)}</th>' for c in headers) + '</tr></thead><tbody>' + ''.join('<tr>' + ''.join(f'<td>{c}</td>' for c in row) + '</tr>' for row in rows) + '</tbody></table></div>'
 
 
-def badge(state):
-    return f'<span class="badge {"bad" if state in BAD else ""}">{h(state.replace("_", " "))}</span>'
 
 
 def candidate_table(run):
@@ -396,7 +375,7 @@ def build(args):
     jobs = [job for s in snapshots for job in s['jobs']]
     results_path = root / 'figure-results.json'
     results = read_json(results_path) if results_path.exists() else {}
-    contract = {'plot_output': PLOT_OUTPUT, 'products_sha256': file_hash(ROOT / 'scripts/spectral_atlas_products.py'), 'renderer_sha256': file_hash(ROOT / 'scripts/spectral_atlas_figures.py'),
+    contract = {'plot_output': PLOT_OUTPUT, 'products_sha256': file_hash(ASSETS.parent / 'products.py'), 'renderer_sha256': file_hash(ROOT / 'scripts/spectral_atlas_figures.py'),
                 'style_sha256': file_hash(ROOT / 'src/spectypus/plot_style.py'),
                 'limits_sha256': file_hash(ROOT / 'src/spectypus/fit_plots.py'),
                 'requests': {str(Path(j[0]).relative_to(root)): file_hash(Path(j[0])) for j in jobs}}

@@ -11,4 +11,4 @@ dependencies:
   - numpy=2.2.6
   - scipy=1.15.2
   - pip:
-      - -e .[dev,engines,jax,web,webtest]
+      - -e .[dev,engines,jax,web,webtest,plots]

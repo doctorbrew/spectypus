@@ -95,7 +95,7 @@ def test_record_tampering_is_rejected(source_factory, manifest_factory, config_f
     payload["candidates"][0]["class_label"] = "SLSN-I"
     path.write_text(json.dumps(payload))
     summary = summarize_output(out)
-    assert summary["run_counts"] == {"pending": 1}
+    assert summary["run_counts"] == {"invalid_evidence": 1}
     assert summary["objects"][0]["status"] == "unclassified"
 
 

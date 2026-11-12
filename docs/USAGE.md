@@ -3,13 +3,15 @@
 This guide covers setup, a first batch, and how to interpret its results.
 The [README](../README.md) provides the quick start.
 
-Reporting currently uses the source-checkout exporters documented in
-[RESULTS_VIEWER.md](RESULTS_VIEWER.md): **SpectralAtlas** provides large-sample
-navigation, and **Classification Report** provides a continuous, EFOSpec-style
-page for a small selection of saved spectra. The report embeds existing master
-JPGs and evidence downloads without rerendering. Installed-package integration,
-direct nightly-folder reporting and the package CLI display selector remain
-planned; acceptance criteria live in the [roadmap](roadmap/SPECTYPUS_ROADMAP.md).
+Both `spectypus run` and `spectypus night` automatically write `index.html` in
+the results folder: a continuous **Classification Report** with an inventory,
+native match tables, fit statuses, Issues and an editable final night log.
+It opens offline without a server or optional web/plot dependencies.
+The source-checkout exporters in [RESULTS_VIEWER.md](RESULTS_VIEWER.md) also
+provide **SpectralAtlas** navigation and reports embedding verified master JPGs.
+Automatic reports include six-panel 300-dpi JPG grids when saved curves and the
+plotting runtime are available. An installed atlas display selector remains
+planned; see the [roadmap](roadmap/SPECTYPUS_ROADMAP.md).
 
 ## Install
 
@@ -48,12 +50,29 @@ and [pyproject.toml](../pyproject.toml); other engine versions need verification
 
 ## Nightly folder command
 
-For a flat folder containing only reduced science `.txt` spectra:
+For a flat folder containing reduced science ASCII spectra:
 
 ```bash
 conda activate spectypus
 spectypus night /path/to/spectra
 ```
+
+For EFOSpec, point to the **reduced nightly output**, not its raw `data/DATE`:
+
+```bash
+spectypus night /path/to/EFOSpec/runs/2026-10-28 \
+  --output /path/to/EFOSpec/data/classifications/2026-10-28
+```
+
+Spectypus reads `nightly/current.json` and the selected reduction's `run.json`,
+then uses only exported `role=science` products. It also recognizes the selected
+revision, reduction or products directory directly. Standards, failed reductions,
+archived and rescue revisions are not mixed into the selection. This supports the
+version-1 `native_raw_calibration_daily_standards` export contract; unsupported or
+provisional wavelength conventions fail explicitly. No EFOSpec imports or reductions
+are executed. The source object name, MJD, air/topocentric wavelength convention,
+reduction status and manifest hash are retained. A partial reduction remains a
+partial source selection: successful typing does not recover its missing targets.
 
 No per-night configuration or manifest is required. The command reuses engine
 settings in this order: `--config PATH`, `SPECTYPUS_CONFIG`,
@@ -65,33 +84,49 @@ paths described under [Install](#install). Existing checkout settings already
 work. Classifiers and template banks remain external; nothing is downloaded.
 
 The nightly profile declares observer-frame Angstrom input, `redshift_mode: both`
-and `save_fit_curves: true`. Other settings, including enabled engines and the
+and `save_fit_curves: true`, with 1800 seconds allowed per fit (`--timeout`). Other settings, including enabled engines and the
 free-z grid, come from the installation configuration (the initial grid is
 0–1 in steps of 0.01). Both engines are enabled in the example configuration.
 These frame/unit defaults are a user-selected workflow convention, not inferred
 metadata; override them for differently prepared spectra. Known redshifts receive
 fixed/free fits; unknown redshifts receive free fits only.
 
-Only matching files directly inside the folder are selected; hidden files and
-subdirectories are excluded. Keep standards, logs and alternate reductions out.
+For flat input, `.txt`, `.asci`, `.ascii` and `.dat` are selected without an extension
+flag; hidden files and subdirectories are excluded. Keep standards, logs and alternate reductions out.
 Filename stems serve as opaque object labels: `SN-A_001.txt` becomes `SN-A_001`,
 not a guessed `SN-A` identity. Use the explicit-manifest workflow below to group
 multiple epochs under one physical object or supply richer per-spectrum metadata.
 Known z can be supplied with `--targets`: its `object_id` must match the full
-filename stem. Frame/unit provenance is recorded; absent metadata stays absent.
+filename stem for flat input or the saved object name for EFOSpec input.
+Frame/unit provenance is recorded; absent metadata stays absent. EFOSpec's declared
+observer/Angstrom conventions cannot be overridden with conflicting CLI values.
+
+Nightly input defaults to `--nonfinite mask`: finite positive wavelengths are
+required, but nonfinite **flux** rows are excluded from the private staged spectrum.
+Every excluded line, flux token and wavelength is saved in `input_staging.json`.
+Intervals at the original wavelength-cell midpoints are passed separately from
+telluric masks to both engines: SAGE mask-aware rebinning/continuum fitting and
+NGSF object/template grid exclusion. This prevents interpolated internal gaps
+from entering the scored samples. No replacement flux or zero filling is written.
+Finite negative flux is retained. Malformed rows, missing/nonpositive/nonfinite
+wavelengths, duplicates and fewer than two usable samples still block the input.
+Use `--nonfinite reject` for the original strict behavior. Explicit-manifest runs
+remain strict unless a row declares `nonfinite_policy=mask`.
 
 | Argument | Default / behavior |
 | --- | --- |
-| `--pattern GLOB` | `*.txt`; nonrecursive, quote wildcards; also supports `*.asci` |
+| `--pattern GLOB` | Optional filter; default supported ASCII extensions or EFOSpec science selection |
 | `--output PATH` | `FOLDER/spectypus`; cannot be the input folder itself |
 | `--config PATH` | Select installation settings explicitly |
 | `--targets CSV` | Optional `object_id,redshift,redshift_source` table |
 | `--frame observer\|rest` | `observer`; rest requires a known z |
 | `--unit angstrom\|nm` | `angstrom` |
+| `--nonfinite mask\|reject` | `mask`; recorded nonfinite-flux exclusions and native wavelength masks |
 | `--mode auto\|both\|free\|fixed` | `both`; overrides the installation redshift mode |
 | `--z-min`, `--z-max`, `--z-step` | Override individual configured grid values |
 | `--plan-only` | Write plan and input checks without fitting |
 | `--max-runs N` | Limit new engine attempts, not spectra; repeat without it to finish |
+| `--timeout SECONDS` | 1800 per attempt for nightly searches; overrides installation timeout |
 
 Results use the standard CSVs, `summary.json` and `attempts/` described below.
 An automatically generated, content-addressed manifest lives inside the output's
@@ -100,10 +135,112 @@ extra nightly configuration is written. Earlier selections and fit evidence are
 retained. Repeating the command reuses verified completed attempts; changed inputs
 or settings receive new execution identities. Original spectra are not rewritten.
 
-This command runs typing and saves fit curves; direct nightly-to-Classification-
-Report HTML/JPG export remains pending. The installed `review` renderer is still
-legacy PDF/JPG and should be omitted from JPG-only workflows. Source report
-exporters accept verified frozen browser evidence; see [RESULTS_VIEWER.md](RESULTS_VIEWER.md).
+Open `index.html` in the output folder. Both nightly and manifest-based batches
+write it before fitting and refresh it after each attempt and on resume. A plan
+or `--plan-only` produces a report with pending/blocked fits. Only verified current
+attempts appear; retained trials do not enter current totals. Invalid evidence is
+labelled explicitly and excluded from matches. Reports show the first six native
+matches per fit (up to configured `top_n`); CSV/data downloads retain precise
+saved values. The title is the common input batch/folder name, otherwise the
+output folder name. Automatic summary priority and redshift provenance follow
+the shared atlas contract; native scores from different engines are not compared.
+
+Edit the final log and use **Save log** (JSON), **Download CSV**, or **Load log**.
+Browser drafts are keyed to the exact spectra/fit records; files from a different
+selection are rejected. Reviewer files remain separate from native evidence and
+automatic summaries. Downloaded files go to the browser's selected destination.
+
+To refresh an existing report without fitting, source inputs or engine installs:
+
+```bash
+spectypus summarize --output /path/to/results
+```
+
+Each engine/configuration with saved curves gets one six-panel master JPG,
+embedded with enlargement and downloads. All JPGs are 300 dpi; no PDFs are
+generated. Grids have three rows and two columns, 1000-Å major wavelength ticks,
+22-pt axis labels, tick labels and rank text, with 19.8-pt legends. Rank text is
+inset at 7% of the panel width. Legends sit above each panel; the matched name,
+native type and phase stay on one line. Target legends abbreviate discovery
+phase as `Name(+2.1d since disc.)`.
+Flux labels use declared `flux_unit`
+metadata (EFOSpec's physical-flux export contract supplies erg s⁻¹ cm⁻² Å⁻¹);
+unspecified inputs say “input units” without assuming physical calibration.
+New configurations save curves by default; explicit
+`save_fit_curves=false` gives tables only. Install `spectypus[plots]` and LaTeX
+for rendering (included in the updated conda recipe). `SPECTYPUS_PLOT_PYTHON`
+optionally selects a separate plotting interpreter. Verified existing JPGs
+can be reused without plotting dependencies. Native templates and engine Python
+may be needed for the first display preparation; no classifier search is run.
+Saved numerical requests are cached independently of figures, so metadata/style
+updates do not replay preprocessing. Missing models remain explicitly unavailable.
+The legacy `review` viewer still uses PDF/JPG; prefer this automatic report.
+
+In the final night log, **Copy text** copies the current edited Name / Type / z /
+Phase / Survey table for pasting into Slack or messages. Restricted offline
+browsers offer selected text for manual copy. **Download CSV** exports those edits
+as `night-log.csv` for spreadsheets. **Save log** saves a reloadable JSON file;
+**Load log** restores that JSON for the same spectra/fits, not a CSV or new spectra.
+These controls never alter native fit results.
+
+### Discovery and host metadata
+
+With `TNS_API_KEY`, `TNS_BOT_ID` and `TNS_BOT_NAME` configured in the environment,
+`night` and `run` fetch discovery metadata once for exact TNS names. Responses
+and hashes live under `metadata/`, separately from immutable fits. Credentials
+are never saved there. Without credentials, existing metadata is used. To refresh:
+
+```bash
+spectypus summarize --output /path/to/results --refresh-tns
+```
+
+The name alone is the spectrum heading. Smaller lines give Discovery MJD and
+Observed MJD to three decimals, phase as **observer-frame days since discovery**
+(no time-dilation correction), a sourced host cross-match and a link to the
+original spectrum. Exact dates remain in data/tooltips. The inventory's Phase
+remains the native spectral-match phase; these have different reference epochs.
+TNS object redshift is never implicitly used as host redshift or fit input.
+API contract: [TNS Getting started](https://www.wis-tns.org/node/20752).
+
+### EFOSpec typing metadata
+
+Spectypus accepts an optional `typing-metadata.json` beside the selected
+EFOSpec `reduction/run.json`. EFOSpec should generate and revision this file;
+users need not author per-night inputs. The file, reduction and ASCII product
+hashes must agree. Stale metadata is rejected. Minimal example:
+
+```json
+{
+  "schema": "efospec-typing-metadata/1",
+  "night": "2026-10-28",
+  "reduction_manifest_sha256": "<SHA256 of run.json>",
+  "spectra": [{
+    "object_id": "AT2024afzf",
+    "path": "products/tAT2024afzf_20261028_Gr13_Free_slit1.0_1_f.asci",
+    "source_sha256": "<SHA256 of ASCII spectrum>",
+    "host_name": "<reviewed galaxy name>",
+    "host_redshift": 0.03,
+    "host_status": "accepted",
+    "host_source": "<catalogue record/reference>",
+    "adopted_redshift": 0.03,
+    "adopted_redshift_kind": "host_catalogue",
+    "redshift_status": "accepted",
+    "adopted_redshift_source": "<reviewed catalogue record/reference>"
+  }]
+}
+```
+
+Those values are placeholders, not a host identification for AT2024afzf. Optional
+fields are `tns_name`, `discovery_mjd`, `discovery_source`, `discovery_survey`,
+`instrument` and `spectrum_url` (a real repository/product URL). Without a URL the
+filename links to the original local file. Keep catalogue candidates, separation,
+method, uncertainty, reference frame and review identity/time in the same record;
+the full record is retained in report provenance. Supported adopted-redshift kinds
+are `host_catalogue`, `narrow_lines` and `transient_spectral`. Host adoption needs
+an accepted host and identical host/adopted z; a nearest candidate alone is not
+accepted. New typing runs use the accepted z for fixed/free fits. Report-only
+refresh can show revised host metadata but never changes the z supplied to an
+already completed fit. EFOSpec producer/editor implementation is still separate.
 
 ## Inputs and a first batch
 
@@ -152,7 +289,8 @@ Use `spectypus summarize --output results/run1` to rebuild summaries without fit
   in a staged copy. Original files are preserved.
 - ASCII columns 1 and 2 are wavelength and flux. Blank/comment lines and a
   `wavelength flux` or `wave flux` header are allowed. Wavelengths must be positive
-  and unique; sorting is recorded. Nonfinite/invalid samples block the spectrum.
+  and unique; sorting is recorded. Strict manifest input blocks nonfinite/invalid
+  samples; the nightly mask policy above handles nonfinite flux explicitly.
   Negative flux is preserved; extra columns, including uncertainties, are ignored
   and recorded as such. Engines use their native noise models.
 - Flux values remain unchanged: no flux-density Jacobian, calibration, extinction

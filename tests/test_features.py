@@ -68,3 +68,20 @@ def test_mask_and_curve_flags_reach_both_adapters(tmp_path,config_factory):
     assert cmd[-1].endswith('spectral_features.json')
     assert read_json(ngsf/'parameters.json')['mask_telluric']==1
     assert read_json(ngsf/'parameters.json')['mask_galaxy_lines']==0
+
+
+def test_input_masks_are_sent_to_both_engines_separately_from_tellurics(tmp_path, config_factory):
+    params = tmp_path / 'params.json'; params.write_text('{}')
+    cfg = load_config(config_factory(telluric_windows=[[6800, 6900]]))
+    cfg['engines']['ngsf'] = {'python': 'python', 'root': str(tmp_path), 'parameters': str(params)}
+    run = {'engine': 'snid_sage', 'mode': 'free', 'redshift': None, 'input_mask_windows': [[4500, 4550]]}
+    sage = tmp_path / 'sage'; sage.mkdir()
+    cmd, _, _ = build_command(run, cfg, sage)
+    assert [list(map(float, v.split(':'))) for v in cmd[cmd.index('--wavelength-masks')+1:]] == [[4500, 4550], [6800, 6900]]
+    ngsf = tmp_path / 'ngsf'; ngsf.mkdir()
+    build_command({**run, 'engine': 'ngsf'}, cfg, ngsf)
+    features = read_json(ngsf / 'spectral_features.json')
+    assert features['input_mask_windows'] == [[4500, 4550]]
+    assert features['telluric_windows'] == [[6800, 6900]]
+    assert features['wavelength_masks'] == [[4500, 4550], [6800, 6900]]
+    assert cfg['telluric_windows'] == [[6800, 6900]]

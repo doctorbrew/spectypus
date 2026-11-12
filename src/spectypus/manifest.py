@@ -91,6 +91,11 @@ def spectrum_data(row: dict) -> tuple[str, dict]:
             raise ValueError("rest-frame wavelengths require a known redshift")
         scale *= 1 + row["redshift"]
     samples = []
+    policy = row.get("nonfinite_policy", "reject") or "reject"
+    if policy not in {"reject", "mask"}:
+        raise ValueError("nonfinite_policy must be reject or mask")
+    all_samples = []
+    excluded = []
     extra_columns = set()
     header_lines = 0
     for line_no, line in enumerate(source.read_text(encoding="utf-8-sig").splitlines(), 1):
@@ -114,16 +119,36 @@ def spectrum_data(row: dict) -> tuple[str, dict]:
             wave, flux = float(columns[0]), float(columns[1])
         except (IndexError, ValueError) as exc:
             raise ValueError(f"invalid numeric sample at line {line_no}") from exc
-        if not math.isfinite(wave) or not math.isfinite(flux) or wave <= 0:
+        if not math.isfinite(wave) or wave <= 0 or not math.isfinite(wave * scale):
             raise ValueError(f"nonfinite sample or nonpositive wavelength at line {line_no}")
-        samples.append((wave * scale, flux))
+        all_samples.append((wave * scale, math.isfinite(flux)))
         extra_columns.add(max(0, len(columns) - 2))
+        if not math.isfinite(flux):
+            if policy == "reject":
+                raise ValueError(f"nonfinite sample or nonpositive wavelength at line {line_no}")
+            excluded.append({"line": line_no, "wavelength_angstrom": wave * scale,
+                             "flux_token": columns[1]})
+            continue
+        samples.append((wave * scale, flux))
     if len(samples) < 2:
         raise ValueError("need at least two numeric samples")
     original_order = samples[:]
     samples.sort()
-    if any(b[0] <= a[0] for a, b in zip(samples, samples[1:])):
+    all_samples.sort()
+    if any(b[0] <= a[0] for a, b in zip(all_samples, all_samples[1:])):
         raise ValueError("duplicate wavelengths are unsupported")
+    windows = []
+    for i, (wave, valid) in enumerate(all_samples):
+        if valid:
+            continue
+        # Midpoints delimit the original invalid pixel cells, including runs
+        # of adjacent invalid pixels. Work in observer Angstrom after scaling.
+        lo = (all_samples[i-1][0] + wave) / 2 if i else wave
+        hi = (wave + all_samples[i+1][0]) / 2 if i+1 < len(all_samples) else wave
+        if windows and lo <= windows[-1][1]:
+            windows[-1][1] = hi
+        else:
+            windows.append([lo, hi])
     content = "".join(f"{wave:.17g} {flux:.17g}\n" for wave, flux in samples)
     report = {
         "source_sha256": file_hash(source), "numeric_sha256": digest(samples),
@@ -135,6 +160,14 @@ def spectrum_data(row: dict) -> tuple[str, dict]:
         "samples": len(samples), "sorted_wavelengths": samples != original_order,
         "min_angstrom": samples[0][0], "max_angstrom": samples[-1][0],
     }
+    if policy == "mask":
+        report.update(nonfinite_policy=policy, original_samples=len(all_samples),
+                      excluded_samples=excluded, input_mask_windows=windows,
+                      invalid_flux_treatment="omit nonfinite flux rows from staged input; mask original pixel cells in both engines; no replacement flux")
+        # Identical finite samples with different excluded support are not the
+        # same numerical input for duplicate suppression.
+        if windows:
+            report["numeric_sha256"] = digest({"samples": samples, "input_mask_windows": windows})
     return content, report
 
 

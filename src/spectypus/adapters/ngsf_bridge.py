@@ -15,7 +15,7 @@ def window_mask(wavelength, windows):
     return mask
 
 
-def install_masks(functions, windows, report_path, curve_path=None, top_n=10):
+def install_masks(functions, windows, report_path, curve_path=None, top_n=10, telluric_windows=None):
     """Exclude masked samples from object AND template normal equations."""
     import numpy as np
     original_core = functions.core
@@ -46,12 +46,14 @@ def install_masks(functions, windows, report_path, curve_path=None, top_n=10):
         masked[excluded] = np.nan
         active_mask = ~np.isfinite(masked)
         if np.count_nonzero(~active_mask) < 35:
-            raise ValueError("fewer than 35 usable NGSF grid samples after telluric masking")
+            raise ValueError("fewer than 35 usable NGSF grid samples after wavelength masking")
         calls += 1
         if calls == 1:
             Path(report_path).write_text(json.dumps({"schema": "spectypus-ngsf-mask/1",
                 "observer_angstrom_windows": windows, "grid_samples": len(lam),
-                "telluric_grid_samples": int(excluded.sum()), "usable_grid_samples": int((~active_mask).sum()),
+                "excluded_grid_samples": int(excluded.sum()),
+                "telluric_grid_samples": int(window_mask(lam, windows if telluric_windows is None else telluric_windows).sum()),
+                "usable_grid_samples": int((~active_mask).sum()),
                 "object_and_template_exclusion": True}, indent=2) + "\n")
         result = original_core(masked, *args, **kwargs)
         if curve_path and last_arrays is not None:
@@ -104,10 +106,11 @@ def main():
     save_curves = lambda: None
     from NGSF import SF_functions as functions
     report = install(functions, backend)
-    windows = settings.get('telluric_windows', [])
+    windows = settings.get('wavelength_masks', settings.get('telluric_windows', []))
     if windows or settings.get('save_fit_curves'):
         save_curves = install_masks(functions, windows, mask_path.with_name("mask_applied.json"),
-            mask_path.with_name("fit_curves.json") if settings.get("save_fit_curves") else None, settings.get("top_n", 10))
+            mask_path.with_name("fit_curves.json") if settings.get("save_fit_curves") else None,
+            settings.get("top_n", 10), telluric_windows=settings.get('telluric_windows', []))
     try:
         runpy.run_path(target, run_name="__main__")
         save_curves()

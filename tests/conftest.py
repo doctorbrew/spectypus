@@ -10,6 +10,13 @@ from spectypus.io import write_csv
 from spectypus.manifest import FIELDS
 
 
+@pytest.fixture(autouse=True)
+def no_live_tns_credentials(monkeypatch):
+    """Synthetic tests must never use the developer's live catalogue account."""
+    for key in ('TNS_API_KEY', 'TNS_BOT_ID', 'TNS_BOT_NAME'):
+        monkeypatch.delenv(key, raising=False)
+
+
 @pytest.fixture
 def source_factory(tmp_path):
     def create(name="spectrum", object_id="SN-A", *, z="", frame="observer", unit="angstrom", flux=1.0):

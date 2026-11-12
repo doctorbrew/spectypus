@@ -67,6 +67,8 @@ def make_plan(manifest: Path, config: Path | dict, targets: Path | None = None) 
                              "object_id": spectrum["object_id"], "engine": name, "mode": mode,
                              "redshift": z, "primary": mode == primary_mode or len(modes) == 1,
                              "blocked_reason": reason})
+                if spectrum.get("staging", {}).get("input_mask_windows"):
+                    runs[-1]["input_mask_windows"] = spectrum["staging"]["input_mask_windows"]
     plan = {"schema": SCHEMA, "tier": "exploratory", "manifest": str(Path(manifest).resolve()),
             "manifest_sha256": file_hash(Path(manifest)), "targets": str(Path(targets).resolve()) if targets else None,
             "targets_sha256": file_hash(Path(targets)) if targets else None, "config": config,
@@ -175,6 +177,7 @@ def execute_one(run: dict, plan: dict, output: Path) -> dict:
             raise ValueError("source input changed since plan creation")
         record["staging"] = staging
         atomic_text(directory / "spectrum.txt", content)
+        write_json(directory / "input_staging.json", staging)
         if run["engine"] == "ngsf":
             parameters = Path(plan["config"]["engines"]["ngsf"]["parameters"])
             if file_hash(parameters) != record["provenance"]["parameters_sha256"]:
@@ -221,7 +224,11 @@ def _summarize(plan: dict, output: Path) -> dict:
             for candidate in record["candidates"][:plan["config"]["top_n"]]:
                 matches.append({**run, **candidate, "attempt_path": record["attempt_path"], "run_status": record["status"]})
         state = "blocked" if run["blocked_reason"] else record["status"] if record else "pending"
-        states.append({**run, "status": state, "reason": run["blocked_reason"] or (record["reason"] if record else "unverified or not executed")})
+        invalid = not run["blocked_reason"] and not record and (output / "attempts" / run["execution_id"] / "current.json").exists()
+        if invalid:
+            state = "invalid_evidence"
+        states.append({**run, "status": state, "reason": run["blocked_reason"] or (record["reason"] if record else
+                      "Saved result failed verification" if invalid else "Not executed yet")})
     summary = aggregate(plan, records)
     summary["run_counts"] = dict(sorted(Counter(row["status"] for row in states).items()))
     summary["all_runs_terminal"] = all(row["status"] in engines.TERMINAL or row["blocked_reason"].startswith("duplicate_of:") for row in states)
@@ -234,10 +241,13 @@ def _summarize(plan: dict, output: Path) -> dict:
               "unique_spectrum_count", "duplicate_count", "contributing_spectra", "support_mass", "abstention_mass", "ranked_classes", "spectrum_ids", "frame_assumed", "frame_review_required"])
     write_csv(output / "spectra.csv", summary["spectra"], ["object_id", "spectrum_id", "status", "proposed_class", "complete",
               "duplicate_of", "expected_engines", "contributing_engines", "support_mass", "abstention_mass", "ranked_classes", "engine_evidence", "diagnostic_fits", "frame_assumed", "frame_review_required"])
+    from .reporting.report import _write_report
+    summary["report"] = _write_report(plan, records, states, output)
+    write_json(output / "summary.json", summary)
     return summary
 
 
-def summarize_output(output: Path) -> dict:
+def summarize_output(output: Path, *, tns: bool = False, refresh_tns: bool = False) -> dict:
     output = Path(output).expanduser().resolve()
     with output_lock(output):
         plan = read_json(output / "plan.json")
@@ -245,17 +255,30 @@ def summarize_output(output: Path) -> dict:
         if plan.get("schema") != SCHEMA or digest(plan) != identity:
             raise ValueError("current plan integrity check failed")
         plan["plan_id"] = identity
-        return _summarize(plan, output)
+        metadata = None
+        if tns or refresh_tns:
+            from .reporting.metadata import fetch_tns
+            metadata = fetch_tns(output, plan['spectra'], refresh=refresh_tns)
+        summary = _summarize(plan, output)
+        if metadata is not None:
+            summary['tns'] = metadata
+        return summary
 
 
 def run_batch(manifest: Path, config: Path | dict, output: Path, *, targets: Path | None = None,
-              max_runs: int | None = None, execute: bool = True, progress=None) -> dict:
+              max_runs: int | None = None, execute: bool = True, progress=None, tns: bool = False) -> dict:
     if max_runs is not None and (type(max_runs) is not int or max_runs < 1):
         raise ValueError("max_runs must be a positive integer")
     output = Path(output).expanduser().resolve()
     with output_lock(output):
         plan = make_plan(manifest, config, targets)
         save_plan(plan, output)
+        metadata = None
+        if tns and execute:
+            from .reporting.metadata import fetch_tns
+            metadata = fetch_tns(output, plan['spectra'])
+        # A readable pending log exists even while the first fit is running.
+        _summarize(plan, output)
         launched = reused = 0
         for run in plan["runs"]:
             if run["blocked_reason"]:
@@ -274,5 +297,7 @@ def run_batch(manifest: Path, config: Path | dict, output: Path, *, targets: Pat
         summary = _summarize(plan, output)
         summary["invocation"] = {"executed": launched, "reused": reused, "execution_requested": execute,
                                  "max_runs": max_runs}
+        if metadata is not None:
+            summary['tns'] = metadata
         write_json(output / "summary.json", summary)
         return summary

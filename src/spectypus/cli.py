@@ -22,20 +22,22 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init", help="write an editable engine configuration; never overwrite")
     init.add_argument("--config", type=Path, default=Path("spectypus.local.json"))
-    night = sub.add_parser("night", help="type a flat folder of reduced .txt spectra with nightly defaults")
+    night = sub.add_parser("night", help="type reduced ASCII spectra or an EFOSpec nightly output")
     night.add_argument("folder", type=Path)
     night.add_argument("--config", type=Path, help="installation settings; otherwise SPECTYPUS_CONFIG, local or user config")
     night.add_argument("--output", type=Path, help="results directory (default: FOLDER/spectypus)")
-    night.add_argument("--pattern", default="*.txt", help="filename glob, nonrecursive (default: *.txt)")
-    night.add_argument("--frame", choices=["observer", "rest"], default="observer", help="input frame (default: observer)")
-    night.add_argument("--unit", choices=["angstrom", "nm"], default="angstrom", help="wavelength unit (default: angstrom)")
-    night.add_argument("--targets", type=Path, help="optional object_id,redshift,redshift_source CSV; object_id is filename stem")
+    night.add_argument("--pattern", help="optional filename glob (default: .txt/.asci/.ascii/.dat or EFOSpec science exports)")
+    night.add_argument("--frame", choices=["observer", "rest"], help="flat-folder input frame (default: observer)")
+    night.add_argument("--unit", choices=["angstrom", "nm"], help="flat-folder wavelength unit (default: angstrom)")
+    night.add_argument("--nonfinite", choices=["mask", "reject"], default="mask", help="nonfinite flux policy (default: mask and record exclusions)")
+    night.add_argument("--targets", type=Path, help="optional object_id,redshift,redshift_source CSV; EFOSpec object name or flat-folder filename stem")
     night.add_argument("--mode", choices=["auto", "both", "free", "fixed"], default="both",
                        help="redshift modes (default: both for known z, free for unknown z)")
     for key in ("min", "max", "step"):
         night.add_argument(f"--z-{key}", type=float, help=f"override configured free-redshift {key}")
     night.add_argument("--plan-only", action="store_true", help="check inputs and save the plan without fitting")
     night.add_argument("--max-runs", type=int, help="limit new engine attempts, not spectra")
+    night.add_argument("--timeout", type=float, default=1800, help="seconds per engine attempt (default: 1800)")
     manifest = sub.add_parser("manifest", help="scan an explicit directory layout into a CSV manifest")
     manifest.add_argument("root", type=Path)
     manifest.add_argument("--output", type=Path, required=True)
@@ -50,8 +52,9 @@ def main(argv: list[str] | None = None) -> int:
         child.add_argument("--output", type=Path, required=True)
         if command == "run":
             child.add_argument("--max-runs", type=int, help="limit new engine attempts; summaries report pending work")
-    summarize = sub.add_parser("summarize", help="verify saved attempts and rebuild summaries without executing engines")
+    summarize = sub.add_parser("summarize", help="verify saved attempts and rebuild CSV/HTML logs without executing engines")
     summarize.add_argument("--output", type=Path, required=True)
+    summarize.add_argument("--refresh-tns", action="store_true", help="refresh cached TNS discovery metadata; never refit")
     doctor = sub.add_parser("doctor", help="inspect configured interpreters, engine sources, and template banks")
     doctor.add_argument("--config", type=Path, required=True)
     review = sub.add_parser("review", help="open a local read-only results website")
@@ -100,24 +103,25 @@ def main(argv: list[str] | None = None) -> int:
             manifest, config, args.output = prepare_night(
                 args.folder, config=args.config, output=args.output, pattern=args.pattern,
                 frame=args.frame, unit=args.unit, mode=args.mode,
-                z_min=args.z_min, z_max=args.z_max, z_step=args.z_step)
-            print(f"Nightly input: {args.pattern}, {args.frame} frame, {args.unit}; "
-                  f"filename stems as labels. Results: {args.output}", flush=True)
+                z_min=args.z_min, z_max=args.z_max, z_step=args.z_step, nonfinite=args.nonfinite,
+                timeout=args.timeout)
+            print(f"Nightly selection: {manifest}; nonfinite flux: {args.nonfinite}. Results: {args.output}", flush=True)
             summary = run_batch(manifest, config, args.output, targets=args.targets,
-                                max_runs=args.max_runs, execute=not args.plan_only,
+                                max_runs=args.max_runs, execute=not args.plan_only, tns=True,
                                 progress=lambda line: print(line, flush=True))
         elif args.command == "summarize":
-            summary = summarize_output(args.output)
+            summary = summarize_output(args.output, refresh_tns=args.refresh_tns)
         else:
             summary = run_batch(args.manifest, args.config, args.output, targets=args.targets,
-                                max_runs=getattr(args, "max_runs", None), execute=args.command == "run",
+                                max_runs=getattr(args, "max_runs", None), execute=args.command == "run", tns=True,
                                 progress=lambda line: print(line, flush=True))
-        print(json.dumps({"output": str(args.output.resolve()), "objects": len(summary["objects"]),
+        print(json.dumps({"output": str(args.output.resolve()), "objects": len(summary["objects"]), 'tns': summary.get('tns'),
                           "runs": summary["run_counts"], "all_runs_terminal": summary["all_runs_terminal"],
+                          "html": summary["report"]["path"],
                           "invocation": summary.get("invocation")}, sort_keys=True))
         # A deliberate --max-runs subset is a valid partial invocation; failures
         # and scientific input blocks still produce a nonzero command status.
-        failures = summary["run_counts"].get("failed", 0)
+        failures = summary["run_counts"].get("failed", 0) + summary["run_counts"].get("invalid_evidence", 0)
         nonduplicate_blocks = any(not s.get("complete", False) and s.get("status") != "duplicate"
                                   and any(e["status"] == "blocked" for e in s.get("engine_evidence", []))
                                   for s in summary["spectra"])
