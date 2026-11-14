@@ -10,8 +10,6 @@ include docs/BENCHMARKS.md
 include docs/CITATION.md
 include docs/references.bib
 include docs/RESULTS_VIEWER.md
-include docs/OVERNIGHT.md
-include docs/FRITZ_BATCH.md
 recursive-include examples *.md *.json *.csv
 recursive-include assets *.png *.svg *.md *.css *.js
 recursive-include scripts *.py *.sh

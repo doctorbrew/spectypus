@@ -392,7 +392,8 @@ fails that attempt. Summaries use only the current plan and verified artifacts.
 Exit codes: 0 successful invocation (including limited runs), 1 run failures or
 nonduplicate input blocks, 2 invalid command/configuration/input, 130 interrupted.
 The CLI runs serially with private attempt workspaces and a single-writer lock.
-For bounded parallel campaigns, see [operation notes](OVERNIGHT.md).
+For bounded parallel campaigns, inspect `scripts/run_saved_campaign.py --help`
+and retain the campaign configuration and frozen runtime with its results.
 
 ## Fitting backends
 

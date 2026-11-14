@@ -45,3 +45,8 @@ GEMINI.md
 /docs/ai/
 /docs/roadmap/
 /docs/decisions/
+
+# Retired local campaign documentation and one-use migration utility.
+/docs/OVERNIGHT.md
+/docs/FRITZ_BATCH.md
+/scripts/migrate_spectral_browser_jpg.py

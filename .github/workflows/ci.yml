@@ -57,7 +57,7 @@ jobs:
           cd "$RUNNER_TEMP"
           "$RUNNER_TEMP/wheel-check/bin/python" -c "import spectypus; from spectypus.adapters import ngsf_backend; assert 'site-packages' in spectypus.__file__; print(spectypus.__file__)"
           "$RUNNER_TEMP/wheel-check/bin/python" -m spectypus --help
-      - name: Upload private CI reports and distributions
+      - name: Upload CI reports and distributions
         if: always()
         continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -89,7 +89,7 @@ jobs:
         with:
           name: ci-reports
           path: results/ci
-      - name: Generate report-derived private badges
+      - name: Generate report-derived badges
         id: metrics
         continue-on-error: true
         env:
