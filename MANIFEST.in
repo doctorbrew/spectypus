@@ -1,11 +1,26 @@
 include environment.yml
-include AGENTS.md
 include CONTRIBUTING.md
 include README_ePESSTO+.md
 include .github/workflows/ci.yml
 include .github/workflows/portable-install.yml
-recursive-include docs *.md *.bib
+include docs/USAGE.md
+include docs/RELEASE.md
+include docs/VALIDATION.md
+include docs/BENCHMARKS.md
+include docs/CITATION.md
+include docs/references.bib
+include docs/RESULTS_VIEWER.md
 recursive-include examples *.md *.json *.csv
 recursive-include assets *.png *.svg *.md *.css *.js
 recursive-include scripts *.py *.sh
 global-exclude *.local.md
+
+# Exclude internal files even when building from a developer checkout.
+exclude AGENTS.md CLAUDE.md GEMINI.md
+exclude docs/PROJECT_INDEX.md docs/PROJECT_HANDOFF.md docs/DEVELOPMENT_LOG.md
+prune docs/ai
+prune docs/roadmap
+prune docs/decisions
+prune .ai-local
+prune .codex
+prune .claude

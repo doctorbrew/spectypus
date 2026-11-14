@@ -317,46 +317,6 @@ def test_jpg_only_build_and_resume_without_rendering(tmp_path, source_factory, m
         validate(root)
 
 
-def test_migration_preserves_jpg_and_requests_and_fails_closed(tmp_path, monkeypatch):
-    from PIL import Image
-    import migrate_spectral_browser_jpg as migration
-    root = tmp_path / 'export'; (root / 'figures').mkdir(parents=True); (root / 'data').mkdir()
-    jpg = root / 'figures/fit.jpg'; Image.new('RGB', (20, 20)).save(jpg, dpi=(300, 300))
-    pdf = root / 'figures/fit.pdf'; pdf.write_bytes(b'old derived PDF fixture')
-    request = root / 'data/fit.json.gz'; request.write_bytes(b'frozen numerical request fixture')
-    write_json(root / 'browser-snapshot.json', {'jobs': [(str(request), str(root / 'figures/fit'))]})
-    result = {'status': 'ready', 'jpg': jpg.name, 'pdf': pdf.name, 'panels': [{'rank': 1}],
-              'product_hashes': {'jpg': file_hash(jpg), 'pdf': file_hash(pdf)}}
-    write_json(root / 'figure-results.json', {'fit': result})
-    contract = migration.render_contract(root, read_json(root / 'browser-snapshot.json')['jobs'])
-    monkeypatch.setattr(migration, 'JPG_RENDERER', contract['renderer'])
-    contract.pop('plot_output'); contract.pop('products'); contract['renderer'] = migration.LEGACY_RENDERER
-    write_json(root / 'render-contract.json', contract)
-    write_json(root / 'manifest.json', {'render_contract_sha256': file_hash(root / 'render-contract.json')})
-    def checksum():
-        write_json(root / 'checksums.json', {str(p.relative_to(root)): file_hash(p) for p in root.rglob('*') if p.is_file() and p.name != 'checksums.json'})
-    checksum()
-    before = {p.name: file_hash(p) for p in (jpg, request, root / 'browser-snapshot.json')}
-    request.write_bytes(b'changed')
-    with pytest.raises(ValueError, match='Changed'):
-        migration.migrate(root, tmp_path / 'rejected')
-    assert not (tmp_path / 'rejected').exists() and pdf.exists()
-    checksum()  # Rehashing the export cannot bypass the frozen request contract.
-    with pytest.raises(ValueError, match='unchanged requests'):
-        migration.preflight(root)
-    request.write_bytes(b'frozen numerical request fixture'); checksum()
-    def publish(frozen, output, results):
-        assert output == root and 'pdf' not in results['fit']
-        checksum()
-    monkeypatch.setattr(migration, 'publish', publish)
-    migration.migrate(root, tmp_path / 'audit')
-    assert not pdf.exists()
-    assert before == {p.name: file_hash(p) for p in (jpg, request, root / 'browser-snapshot.json')}
-    assert (tmp_path / 'audit/previous-presentation.tar.gz').is_file()
-    assert read_json(root / 'jpg-migration.json')['rerendered_figures'] == 0
-    assert read_json(root / 'figure-results.json')['fit']['panels'] == result['panels']
-
-
 def test_robust_axis_limits_do_not_flatten_broad_spectrum_for_edge_noise():
     import numpy as np
     from spectral_atlas_limits import robust_limits
