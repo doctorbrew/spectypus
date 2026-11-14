@@ -11,7 +11,7 @@ The source-checkout exporters in [RESULTS_VIEWER.md](RESULTS_VIEWER.md) also
 provide **SpectralAtlas** navigation and reports embedding verified master JPGs.
 Automatic reports include six-panel 300-dpi JPG grids when saved curves and the
 plotting runtime are available. An installed atlas display selector remains
-planned; see the [roadmap](roadmap/SPECTYPUS_ROADMAP.md).
+planned.
 
 ## Install
 

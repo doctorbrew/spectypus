@@ -26,7 +26,7 @@ results/
 *.pkl
 *.pt
 
-# Local AI sessions, personal settings and scratch work (shared AGENTS.md stays tracked).
+# Local AI sessions, personal settings and scratch work.
 /.codex/
 /.claude/
 /.ai-local/
@@ -34,3 +34,14 @@ results/
 /.aider.chat.history.md
 /.aider.input.history
 /.aider.tags.cache*/
+
+# Internal development guidance is retained locally, never published.
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+/docs/PROJECT_INDEX.md
+/docs/PROJECT_HANDOFF.md
+/docs/DEVELOPMENT_LOG.md
+/docs/ai/
+/docs/roadmap/
+/docs/decisions/
