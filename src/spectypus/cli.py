@@ -22,6 +22,13 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init", help="write an editable engine configuration; never overwrite")
     init.add_argument("--config", type=Path, default=Path("spectypus.local.json"))
+    setup = sub.add_parser("setup", help="explicitly download template banks or register existing assets")
+    setup.add_argument("--config", type=Path, default=Path("spectypus.local.json"), help="new config; never overwrite")
+    setup.add_argument("--data-dir", type=Path, default=Path.home() / ".local/share/spectypus")
+    setup.add_argument("--engine", choices=["both", "snid-sage", "ngsf"], default="both")
+    setup.add_argument("--snid-templates", type=Path, help="use an existing SAGE bank without downloading")
+    setup.add_argument("--ngsf-root", type=Path, help="use an existing NGSF source directory containing bank/")
+    setup.add_argument("--ngsf-bank-archive", type=Path, help="install a manually downloaded WISeREP ZIP")
     night = sub.add_parser("night", help="type reduced ASCII spectra or an EFOSpec nightly output")
     night.add_argument("folder", type=Path)
     night.add_argument("--config", type=Path, help="installation settings; otherwise SPECTYPUS_CONFIG, local or user config")
@@ -69,6 +76,13 @@ def main(argv: list[str] | None = None) -> int:
                              help="Classification Report (default) or SpectralAtlas")
     args = parser.parse_args(argv)
     try:
+        if args.command == "setup":
+            from .setup import setup as setup_assets
+            setup_assets(config=args.config, data_dir=args.data_dir, engine=args.engine,
+                         snid_templates=args.snid_templates, ngsf_root=args.ngsf_root,
+                         ngsf_bank_archive=args.ngsf_bank_archive,
+                         progress=lambda line: print(line, flush=True))
+            return 0
         if args.command == 'plot-log':
             from .io import read_json
             from .reporting.selected import export_selected

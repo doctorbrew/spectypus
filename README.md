@@ -12,24 +12,26 @@ in a **Classification Report** with an editable final log.
 
 ## One-time setup
 
+Requires Git and Conda on macOS/Linux:
+
 ```bash
 git clone https://github.com/doctorbrew/spectypus.git
 cd spectypus
 conda env create -f environment.yml
 conda activate spectypus
-spectypus init --config spectypus.local.json
-```
-
-Supply the NGSF source and both classifiers' template banks separately. Set their
-paths and the Python interpreter in `spectypus.local.json`; see
-[installation details](docs/USAGE.md#install). Check the setup with:
-
-```bash
+spectypus setup
 spectypus doctor --config spectypus.local.json --plots
 ```
 
-For later runs, just activate the environment. Run from this directory, or add
-`--config /path/to/spectypus.local.json` when running elsewhere.
+The environment installs **SNID-SAGE and Python dependencies**. `setup` downloads
+both template banks and NGSF source into `~/.local/share/spectypus/`, then writes
+their paths to `spectypus.local.json`. New plots also need **`latex` and `dvipng`**.
+Review the configuration's redshift range before fitting.
+
+Already have templates, or WISeREP blocks the download? See
+[template setup and manual alternatives](docs/TEMPLATE_SETUP.md).
+Spectypus ships through **GitHub**, not yet PyPI or a Conda channel; Conda creates
+the environment and pip installs the local package inside it.
 
 ## Build a spectra atlas
 
@@ -78,9 +80,16 @@ See [validation and limits](docs/VALIDATION.md) for the scientific scope.
 
 ## Citation and acknowledgements
 
-Cite the [Spectypus GitHub repository](https://github.com/doctorbrew/spectypus)
-and report the version and commit used. See the short [citation guide](docs/CITATION.md) and
-[BibTeX references](docs/references.bib) for the classifiers used in your analysis.
+Cite [Spectypus](https://github.com/doctorbrew/spectypus) with the version/commit
+used, and the classifiers and underlying methods used in your analysis:
+
+- **SNID-SAGE:** [Stoppa & Smartt (2026)](https://doi.org/10.1093/mnras/stag1066);
+  **SNID:** [Blondin & Tonry (2007)](https://doi.org/10.1086/520494).
+- **NGSF:** [Goldwasser et al. (2022)](https://www.wis-tns.org/node/138742);
+  **Superfit:** [Howell et al. (2005)](https://doi.org/10.1086/497119).
+
+Also cite your spectra and template collections. [Citation wording](docs/CITATION.md)
+and [BibTeX](docs/references.bib) are provided.
 
 We thank the developers of SNID, SNID-SAGE, NGSF and Superfit, the contributors
 of reference spectra, and the scientific Python community.

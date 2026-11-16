@@ -33,6 +33,14 @@ finite curves. Template types stay distinct from target classifications.
 
 ## Scientific limitations
 
+Template provisioning has offline regression coverage for downloading/registering
+assets, retries, single-engine configuration, checksum failures, unsafe archives
+and preservation of existing assets/configs. A live SAGE 1.2.3 archive passed
+checksum and structure checks; the pinned NGSF source archive was verified.
+WISeREP returned HTTP 403 from the validation environment, so a full fresh NGSF
+bank download is not established. ZIP fallback was exercised using fixture
+archives. These checks do not run classifiers or establish template quality.
+
 A literature-labelled, 157-object SLSN-I recovery benchmark was completed. It
 is not a representative multiclass accuracy, purity or calibration measurement.
 Local real-engine checks used bounded samples and external template banks; they

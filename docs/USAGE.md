@@ -10,43 +10,52 @@ It opens offline without a server or optional web/plot dependencies.
 The source-checkout exporters in [RESULTS_VIEWER.md](RESULTS_VIEWER.md) also
 provide **SpectralAtlas** navigation and reports embedding verified master JPGs.
 Automatic reports include six-panel 300-dpi JPG grids when saved curves and the
-plotting runtime are available. An installed atlas display selector remains
-planned.
+plotting runtime are available. Use `--display report` or `--display atlas` to choose the installed display.
 
 ## Install
 
-From the cloned repository on macOS or Linux:
+Spectypus is available from [GitHub releases](https://github.com/doctorbrew/spectypus/releases)
+or a source checkout; it is not published to PyPI or a Conda channel. From a
+checkout on macOS/Linux:
 
 ```bash
 conda env create -f environment.yml
 conda activate spectypus
-spectypus init --config spectypus.local.json
-python -c 'import sys; print(sys.executable)'
+spectypus setup
+spectypus doctor --config spectypus.local.json --plots
 ```
 
-The environment includes Python 3.10, SNID-SAGE 1.2.3, JAX and the viewer.
-Supply NGSF (the `run.py PARAMETERS.json` interface) and both template banks
-separately. Set these fields in `spectypus.local.json`:
+`setup` is available from v0.3.0; v0.2.1 artifacts predate it.
 
-| Field | Value |
-| --- | --- |
-| Each engine's `python` | Interpreter path printed above |
-| `engines.snid_sage.templates` | SNID-SAGE template directory |
-| `engines.ngsf.root` | NGSF source directory |
-| `engines.ngsf.parameters` | NGSF parameter JSON with your template paths |
-| `free_redshift` | Scientifically appropriate `min`, `max`, `step`; 0–1 is only an example |
+Conda creates the environment; pip installs Spectypus and its selected extras
+inside it. The environment includes Python 3.10, SNID-SAGE 1.2.3, JAX and the
+Python viewer/plotting dependencies. A plain wheel has no engine dependencies.
+The `engines` extra installs SAGE and supporting Python packages, not NGSF source
+or either bank.
 
-Both engines are enabled by default; set an engine's `enabled` to `false` to
-exclude it. Paths resolve relative to the configuration file. Check setup with:
+`setup` explicitly downloads SAGE templates, pinned NGSF source and its WISeREP
+bank into `~/.local/share/spectypus/`, then writes `spectypus.local.json` with the
+active Python interpreter and resolved paths. It preserves existing assets and
+refuses to overwrite a configuration. Review the generated redshift range before
+fitting. Downloads happen only in `setup`, never in `night`, `run` or `doctor`.
 
-```bash
-spectypus doctor --config spectypus.local.json
-```
+See [template setup](TEMPLATE_SETUP.md) for existing installations, single-engine
+setup, manual downloads and WISeREP access failures. New plot rendering requires
+system **`latex` and `dvipng`** executables in addition to the Python packages.
+`doctor` checks configuration, imports and assets; it does not classify spectra
+or establish scientific accuracy.
 
-If already configured, activate the environment and skip `init`, which refuses
-to overwrite files. Keep environments serving active fits unchanged; prepare
-updates in a separate environment. Dependencies live in [environment.yml](../environment.yml)
-and [pyproject.toml](../pyproject.toml); other engine versions need verification.
+### Configure and verify
+
+Reuse the configuration produced by `setup`. To configure separate interpreter
+paths or banks manually, use `spectypus init --config spectypus.local.json`, edit
+its fields using the [manual guide](TEMPLATE_SETUP.md#manual-configuration), then
+run `doctor`. Both `init` and `setup` refuse existing config files. Paths expand
+`~` and resolve relative to the config file; JSON paths do not expand `$HOME`.
+
+Keep environments and banks serving active fits unchanged. Dependencies live in
+[environment.yml](../environment.yml) and [pyproject.toml](../pyproject.toml);
+other engine versions need verification.
 
 ## Nightly folder command
 

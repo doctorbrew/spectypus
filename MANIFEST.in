@@ -4,6 +4,7 @@ include README_ePESSTO+.md
 include .github/workflows/ci.yml
 include .github/workflows/portable-install.yml
 include docs/USAGE.md
+include docs/TEMPLATE_SETUP.md
 include docs/RELEASE.md
 include docs/VALIDATION.md
 include docs/BENCHMARKS.md
