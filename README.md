@@ -49,6 +49,8 @@ The folder scan is nonrecursive and uses each filename stem as its object name.
 
 ## Build a nightly classification report
 
+[Open published fitting logs, EFOSpec nightly logs and IRAF comparisons](OUTPUTS_PIPELINE.md).
+
 For a folder of reduced science spectra:
 
 ```bash
