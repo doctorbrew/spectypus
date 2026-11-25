@@ -115,7 +115,7 @@ def test_named_legends_preserve_zero_unknown_and_conflicting_phases():
     from spectral_atlas_top5_figures import legend_labels
     candidate = {'template': 'Ic/1998bw/spectrum_epoch_1', 'phase_days': -2.5, 'native_class': 'Ic', 'native_subtype': ''}
     request = {'source': {'object_id': 'SN2018avk', 'phase_rest_days': 0}}
-    assert legend_labels(request, candidate) == ('SN2018avk (+0.0 d rest)', 'SN1998bw — Ic (-2.5 d)')
+    assert legend_labels(request, candidate) == ('SN2018avk (+0.0 d rest)', 'SN1998bw (-2.5d) - Ic at z=unknown')
     request['source'].pop('phase_rest_days')
     assert 'phase unknown' in legend_labels(request, candidate)[0]
     request['phase_context'] = {'references': [{'kind': 'maximum', 'rest_days': -3.}, {'kind': 'maximum', 'rest_days': -5.}]}
@@ -123,9 +123,9 @@ def test_named_legends_preserve_zero_unknown_and_conflicting_phases():
     request['phase_context']['references'] = [{'kind': 'discovery', 'rest_days': 6.}]
     assert 'phase unknown' in legend_labels(request, candidate)[0]
     candidate['template'] = 'Ia 02es-like/iPTF14atg/ALFOSC phase-band : -2.5B'
-    assert legend_labels(request, candidate)[1] == 'iPTF14atg — Ic (-2.5 d)'
+    assert legend_labels(request, candidate)[1] == 'iPTF14atg (-2.5d) - Ic at z=unknown'
     candidate['template'] = 'LSQ14mo_epoch_2'
-    assert legend_labels(request, candidate)[1] == 'LSQ14mo — Ic (-2.5 d)'
+    assert legend_labels(request, candidate)[1] == 'LSQ14mo (-2.5d) - Ic at z=unknown'
 
 
 def test_ten_angstrom_sg_includes_tellurics_and_preserves_raw_layer():
@@ -188,12 +188,14 @@ def test_match_grid_plots_full_input_including_fitter_masked_regions():
              'model': [[6850, 1], [6950, None], [7100, 1]],
              'display_model': [[6850, 1], [6950, 1], [7100, 1]],
              'features': {'telluric_windows': [[6900, 7000]], 'host_lines': []}}
-    request = {'source': {'object_id': 'SN-test'}, 'engine': 'ngsf', 'mode': 'fixed',
+    request = {'source': {'object_id': 'SN-test', 'redshift': .132}, 'engine': 'ngsf', 'mode': 'fixed',
                'input_spectrum': {'available': True, 'contents': contents, 'sha256': hashlib.sha256(contents.encode()).hexdigest()},
                'display_transform': {'kind': 'ngsf-scale', 'input_sha256': hashlib.sha256(contents.encode()).hexdigest(), 'scale': 2.},
-               'matches': [{'candidate': {'rank': i, 'template': 'SN1998bw', 'phase_days': 0}, 'curve': curve} for i in range(1, 7)]}
+               'matches': [{'candidate': {'rank': i, 'template': 'SN1998bw', 'phase_days': 0, 'native_class': 'Ic', 'redshift': .131}, 'curve': curve} for i in range(1, 7)]}
     fig, diagnostics = create_figure(request)
     try:
+        assert 'fixed-z (z=0.132)' in fig._suptitle.get_text()
+        assert all('at z=0.131' in panel['legend_labels'][1] for panel in diagnostics)
         for index, ax in enumerate(fig.axes):
             assert ax.get_subplotspec().get_gridspec().get_geometry() == (3, 2)
             np.testing.assert_allclose(np.diff(ax.xaxis.get_majorticklocs()), 1000.)
@@ -221,6 +223,8 @@ def test_match_grid_plots_full_input_including_fitter_masked_regions():
     request['display_transform']['scale'] = 100.
     fig, diagnostics = create_figure(request)
     try:
+        assert 'fixed-z (z=0.132)' in fig._suptitle.get_text()
+        assert all('at z=0.131' in panel['legend_labels'][1] for panel in diagnostics)
         assert all(p['model_entirely_outside_limits'] for p in diagnostics)
         assert all(any(t.get_text() == 'Saved model outside y-range' for t in ax.texts) for ax in fig.axes)
     finally:
@@ -259,14 +263,15 @@ def test_renderers_write_only_300_dpi_jpg(tmp_path, renderer):
     from spectral_atlas_top5_figures import render_matches
     from spectral_atlas_figures import render_spectrum
     curve = {'available': True, 'execution_id': 'fit', 'engine': 'ngsf', 'mode': 'fixed',
-             'observed': [[4000, 1], [5000, 2], [6000, 1]],
+             'observed': [[x, 1 + (1 - abs(x - 5000) / 1000)] for x in range(4000, 6001, 10)],
              'model': [[4000, 1], [5000, 1.8], [6000, 1]],
              'features': {'telluric_windows': [], 'host_lines': []}}
     source = tmp_path / 'spectrum.txt'; source.write_text('4000 1\n5000 2\n6000 1\n')
-    request = {'source': {'object_id': 'SN-test'}, 'engine': 'ngsf', 'mode': 'fixed',
+    request = {'source': {'object_id': 'SN-test', 'redshift': .132}, 'engine': 'ngsf', 'mode': 'fixed',
                'curves': [curve], 'input_spectrum': saved_input({'attempt_path': str(tmp_path), 'artifacts': {'spectrum.txt': file_hash(source)}}),
                'display_transform': {'kind': 'ngsf-scale', 'input_sha256': file_hash(source), 'scale': 1.},
-               'matches': [{'candidate': {'rank': 1, 'template': 'SN1998bw', 'phase_days': 0}, 'curve': curve}]}
+               'matches': [{'candidate': {'rank': 1, 'template': 'SN1998bw', 'phase_days': 0, 'native_class': 'Ic', 'redshift': .131}, 'curve': curve}]}
+    curve['candidate'] = request['matches'][0]['candidate']
     path = tmp_path / 'request.json'
     write_json(path, request)
     if renderer == 'six_matches':
@@ -274,6 +279,7 @@ def test_renderers_write_only_300_dpi_jpg(tmp_path, renderer):
         result = render_matches((path, tmp_path / 'figure'))
     else:
         result = render_spectrum((path, tmp_path / 'figure'))
+    assert all(panel['status'] == 'rendered' for panel in result['panels'])
     assert 'pdf' not in result and list(tmp_path.glob('*.pdf')) == []
     result['product_hashes'] = {'jpg': file_hash(tmp_path / result['jpg'])}
     assert product_ready(tmp_path, result)

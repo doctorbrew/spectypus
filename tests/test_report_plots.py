@@ -23,7 +23,7 @@ def test_discovery_legend_and_sourced_flux_units(tmp_path):
     assert flux_label({'flux_unit': 'mJy'}) == 'Flux (mJy)'
     assert legend_labels({'source': row}, {'template': 'SN2007bm', 'native_class': 'Ia',
                          'native_subtype': 'Ia-norm', 'phase_days': -9.3}) == (
-        'AT2026agwm(+2.1d since discovery)', 'SN2007bm — Ia / Ia-norm (-9.3 d)')
+        'AT2026agwm(+2.1d since discovery)', 'SN2007bm (-9.3d) - Ia / Ia-norm at z=unknown')
 
 
 def test_master_cache_and_metadata_refresh_reuse_numerical_request(tmp_path, monkeypatch):
@@ -78,3 +78,21 @@ def test_cached_jpg_validation_without_plotting_dependencies(tmp_path, monkeypat
     good.write_bytes(good.read_bytes()[:-2])
     with pytest.raises(ValueError, match='complete JPEG'):
         validate_jpg(good)
+
+
+@pytest.mark.parametrize('z, text', [(0.13249, '0.132'), (0., '0.000'),
+                                    (None, 'unknown'), (float('nan'), 'unknown')])
+def test_match_redshift_is_native_not_supplied(z, text):
+    from spectypus.reporting.grids import legend_labels, redshift_mode_label
+    from spectypus.fit_plots import match_label
+    source = {'object_id': 'Target', 'redshift': .2}
+    candidate = {'template': 'SN2007S', 'phase_days': -4.7,
+                 'native_class': 'Ia', 'redshift': z}
+    expected = f'SN2007S (-4.7d) - Ia at z={text}'
+    for mode in ('fixed', 'free'):
+        assert legend_labels({'source': source, 'mode': mode}, candidate)[1] == expected
+    assert match_label(candidate) == expected
+    assert redshift_mode_label('fixed', source) == 'fixed-z (z=0.2)'
+    assert redshift_mode_label('free', source) == 'free-z'
+    assert redshift_mode_label('fixed', {}) == 'fixed-z (z=unknown)'
+    assert redshift_mode_label('fixed', {'redshift': 0.}) == 'fixed-z (z=0)'

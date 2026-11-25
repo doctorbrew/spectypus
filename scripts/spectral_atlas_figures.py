@@ -10,6 +10,7 @@ def render_spectrum(job):
     import matplotlib.pyplot as plt
     import numpy as np
     from spectypus.fit_plots import display_limits, tex
+    from spectypus.reporting.grids import template_label, redshift_mode_label
     from spectypus.plot_style import HIROSHIGE, set_plotparams, styled_legend
 
     path, destination = map(Path, job)
@@ -31,7 +32,7 @@ def render_spectrum(job):
                 for lo, hi in windows:
                     values[(values[:, 0] >= lo) & (values[:, 0] <= hi), 1] = np.nan
             ax.plot(obs[:, 0], obs[:, 1], color=HIROSHIGE(.05), lw=.8, label='Observed')
-            ax.plot(model[:, 0], model[:, 1], color=HIROSHIGE(.85), lw=1.1, label='Matched model')
+            ax.plot(model[:, 0], model[:, 1], color=HIROSHIGE(.85), lw=1.1, label=tex(template_label(curve['candidate'])))
             for lo, hi in windows:
                 ax.axvspan(lo, hi, color='goldenrod', alpha=.15)
             for line in curve['features']['host_lines']:
@@ -41,7 +42,7 @@ def render_spectrum(job):
             ax.set_xlabel(r'Observer wavelength (\AA)', fontsize=13)
             ax.set_ylabel('Normalized flux' if curve['engine'] == 'ngsf' else 'Continuum residual flux', fontsize=12)
             name = 'NGSF' if curve['engine'] == 'ngsf' else 'SNID-SAGE'
-            ax.set_title(name + ' / ' + curve['mode'] + '-z / rank 1', fontsize=14)
+            ax.set_title(name + ' / ' + redshift_mode_label(curve['mode'], request.get('source', {})) + ' / rank 1', fontsize=14)
             styled_legend(ax, loc='lower right', fontsize=9)
             diagnostics.append({'execution_id': curve['execution_id'], 'status': 'rendered', 'limits': limits, **info})
         except (ValueError, IndexError, KeyError) as exc:

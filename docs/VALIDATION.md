@@ -4,6 +4,16 @@ Spectypus is an exploratory spectral-classification pipeline. Native matches
 are candidates for review. Combined support is uncalibrated, dimensionless
 evidence; it is not a probability or a secure classification.
 
+## Plot labels (2026-11-25)
+
+The spectypus-environment suite passed 328 tests with 10 optional skips.
+Regression checks distinguish supplied fixed z from candidate fit z, retain
+zero and unknown values, and exercise grid titles and template legends.
+A synthetic six-panel 300-dpi JPG was visually inspected for label fit.
+The 0.3.1 wheel and source archive were built and inspected; a clean core-wheel
+installation outside the checkout passed 35 tests with one optional skip.
+This validates presentation only; existing scientific reports were not refreshed.
+
 ## Software verification
 
 The automated suite exercises adapters, native result semantics, aggregation,

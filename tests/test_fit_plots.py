@@ -61,7 +61,7 @@ def test_requested_titles_and_internal_match_label():
     c = {'mjd':58242.,'redshift':.132}
     assert figure_title('SN2018avk',c,'ngsf','fixed') == 'SN2018avk - MJD 58242 - NGSF (Fixed-z) (z=0.132)'
     assert figure_title('SN2018avk',c,'ngsf','free') == 'SN2018avk - MJD 58242 - NGSF (Free-z)'
-    assert match_label({'template':'sn1993J_epoch_12','phase_days':-8.3}) == 'SN1993J : -8.3 d'
+    assert match_label({'template':'sn1993J_epoch_12','phase_days':-8.3}) == 'SN1993J (-8.3d) - type unknown at z=unknown'
 
 
 def test_catalogue_dates_keep_reference_band_and_frame():
@@ -111,7 +111,7 @@ def test_figure_layout_without_exporting_images(tmp_path, monkeypatch):
         for ax in fig.axes:
             if not ax.get_visible(): continue
             assert ax.get_xticklabels()[0].get_fontsize() == 27
-            assert any('SN1993J : -8.3 d' == t.get_text() for t in ax.texts)
+            assert any('SN1993J (-8.3d) - type unknown at z=unknown' == t.get_text() for t in ax.texts)
         assert all(t.get_position()[1] >= 1 for t in fig.texts)  # only collage title; no footer
         checked.append(str(stem))
     monkeypatch.setattr(plot_style, 'savefig_light', inspect)

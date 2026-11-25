@@ -45,18 +45,33 @@ def legend_labels(request, candidate):
                  if r['kind'] == 'maximum' and r.get('rest_days') is not None}
         target_phase = (f'{next(iter(peaks)):+.1f} d rest' if len(peaks) == 1
                         else 'phase ambiguous' if peaks else 'phase unknown')
-    identity = candidate['template']
-    found = re.search(r'(?:sn)?((?:19|20)\d{2}[A-Za-z]+)', identity, re.I)
-    # NGSF encodes class/object/instrument; SAGE appends an epoch identifier.
-    # Preserve named transients such as iPTF14atg and LSQ14mo without inventing
-    # a different SN designation or repeating the template's path in the legend.
-    fallback = identity.split('/')[1] if '/' in identity else re.split(r'_epoch_|_phase_', identity, maxsplit=1)[0]
-    matched_name = 'SN' + found.group(1) if found else fallback
-    template_phase = number(candidate.get('phase_days'))
-    template_phase = f'{template_phase:+.1f} d' if template_phase is not None else 'phase unknown'
     if return_target is None:
         return_target = f'{source["object_id"]} ({target_phase})'
-    return return_target, f'{matched_name} — {native_type_label(candidate)} ({template_phase})'
+    return return_target, template_label(candidate)
+
+
+def redshift_mode_label(mode, source):
+    """Label the supplied fixed input independently of candidate fit redshifts."""
+    from spectypus.phases import number
+    label = f'{mode}-z'
+    if mode == 'fixed':
+        z = number(source.get('redshift'))
+        label += f' (z={z:g})' if z is not None else ' (z=unknown)'
+    return label
+
+
+def template_label(candidate):
+    """Native template identity and fitted z; never substitute the target z."""
+    from spectypus.phases import number
+    identity = candidate['template']
+    found = re.search(r'(?:sn)?((?:19|20)\d{2}[A-Za-z]+)', identity, re.I)
+    fallback = identity.split('/')[1] if '/' in identity else re.split(r'_epoch_|_phase_', identity, maxsplit=1)[0]
+    name = 'SN' + found.group(1) if found else fallback
+    phase = number(candidate.get('phase_days'))
+    phase_text = f'{phase:+.1f}d' if phase is not None else 'phase unknown'
+    z = number(candidate.get('redshift'))
+    z_text = f'{z:.3f}' if z is not None else 'unknown'
+    return f'{name} ({phase_text}) - {native_type_label(candidate)} at z={z_text}'
 
 
 def smooth_observed(points, width=10.):
@@ -223,7 +238,7 @@ def create_figure(request):
     from spectypus.phases import number
     mjd = number(source.get('mjd'))
     date = f'{mjd:.3f}' if mjd is not None else 'unknown'
-    fig.suptitle(tex(f'{source["object_id"]} / MJD {date} / {engine} / {request["mode"]}-z'), fontsize=20, y=.98)
+    fig.suptitle(tex(f'{source["object_id"]} / MJD {date} / {engine} / {redshift_mode_label(request["mode"], source)}'), fontsize=20, y=.98)
     fig.supxlabel(r'Observer wavelength (\AA)', fontsize=LABEL_SIZE, y=.015)
     fig.supylabel(flux_label(source), fontsize=LABEL_SIZE, x=.025)
     fig.subplots_adjust(left=.085, right=.985, bottom=.07, top=.86, wspace=.06, hspace=.40)

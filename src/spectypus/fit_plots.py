@@ -82,10 +82,8 @@ def figure_title(object_name, context, engine, mode):
 
 
 def match_label(candidate):
-    matched = re.search(r'(?:sn)?((?:19|20)\d{2}[A-Za-z]+)', candidate['template'], re.I)
-    name = 'SN' + matched.group(1) if matched else candidate['template'].split('/')[1] if '/' in candidate['template'] else candidate['template']
-    phase = candidate['phase_days']
-    return f'{name} : {phase:+.1f} d' if phase is not None else f'{name} : phase unknown'
+    from spectypus.reporting.grids import template_label
+    return template_label(candidate)
 
 
 def tex(value):
