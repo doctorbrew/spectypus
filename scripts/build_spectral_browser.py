@@ -169,7 +169,9 @@ def sidebar(objects, selected, prefix):
     for obj in objects:
         terms = ' '.join([obj['name'], *obj['aliases']]).lower()
         current = 'aria-current="page"' if obj['name'] == selected else ''
-        rows.append(f'<a href="{prefix}objects/{key(obj["name"])}.html" data-sn="{h(terms)}" {current}><span>{h(obj["name"])}</span><small>{obj["spectra"]} records · {len(obj["campaigns"])} campaign(s)</small></a>')
+        ztf = next((a for a in obj['aliases'] if a.upper().startswith('ZTF')), None)
+        label = f'{h(obj["name"])} ({h(ztf)})' if ztf else h(obj['name'])
+        rows.append(f'<a href="{prefix}objects/{key(obj["name"])}.html" data-sn="{h(terms)}" {current}><span>{label}</span><small>{obj["spectra"]} records · {len(obj["campaigns"])} campaign(s)</small></a>')
     return f'<aside class="sn-sidebar" aria-label="Supernova navigation"><a class="sidebar-brand" href="{prefix}index.html">Spectypus<br><span>SpectralAtlas</span></a><label for="sn-search">Find a supernova</label><input id="sn-search" type="search" placeholder="SN name or ZTF alias" autocomplete="off"><p id="sn-count" class="muted">{len(objects)} objects</p><nav class="sn-list">'+''.join(rows)+f'</nav><a class="summary-link" href="{prefix}summary.html">Campaign summary</a></aside>'
 
 
@@ -320,8 +322,8 @@ def publish(frozen, root, results):
                                       'telluric_markers': 'short grey bars; no shaded blocks',
                                       'legend_locations': sorted({p.get('legend_location', 'upper right') for r in results.values() for p in r.get('panels', []) if p['status'] == 'rendered'}), 'legend_shadow': False, 'y_labels': sorted({r.get('y_label', 'Flux') for r in results.values() if r['status'] == 'ready'}),
                                       'palette_reference': 'EFOSpec/scripts/preview_spectrum_style.py',
-                                      'observed_colour': '#000000', 'model_colour': '#ef6666',
-                                      'model_colour_definition': '60% xkcd:red mixed with 40% white, opaque'},
+                                      'observed_colour': '0.4', 'model_colour': 'xkcd:bright red',
+                                      'model_colour_definition': 'xkcd:bright red, opaque'},
                 'snapshots': [{k: s[k] for k in ('label', 'plan_id', 'started_at', 'checked_at', 'counts')} for s in frozen['snapshots']],
                 'builder_sha256': file_hash(Path(__file__)), 'render_contract_sha256': file_hash(contract_path), 'presentation_sha256': {n: file_hash(ASSETS / n) for n in ('atlas.css', 'atlas.js', 'browser.css', 'browser.js')}}
     if (root / 'model-restoration.json').exists():

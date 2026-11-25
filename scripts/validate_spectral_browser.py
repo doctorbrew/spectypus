@@ -63,6 +63,15 @@ class BrowserHTML(HTMLParser):
         if self.active_cell is not None: self.active_cell['text'] += data
 
 
+def verified_source_link(href, source_paths):
+    # Resolve aliases only to existing sources declared in the frozen snapshot.
+    url = urlsplit(href)
+    if url.scheme != 'file' or url.netloc or url.query or url.fragment:
+        return False
+    target = Path(unquote(url.path))
+    return target.is_absolute() and target.is_file() and target.resolve() in source_paths
+
+
 def validate(root):
     root = root.resolve()
     checks = json.loads((root / 'checksums.json').read_text())
@@ -130,7 +139,7 @@ def validate(root):
                 assert result['status'] == 'ready', f'Unavailable figure: {run["plot_key"]}'
                 if manifest.get('plot_presentation'):
                     assert all(p.get('display_mask_applied') is False for p in result['panels'] if p['status'] == 'rendered')
-                    assert result['colours'] == {'observed': '#000000', 'model': '#ef6666'}
+                    assert result['colours'] == {'observed': manifest['plot_presentation']['observed_colour'], 'model': manifest['plot_presentation']['model_colour']}
                     raw = request['input_spectrum']
                     if raw['available']:
                         assert hashlib.sha256(raw['contents'].encode()).hexdigest() == raw['sha256'] == run['artifacts']['spectrum.txt']
@@ -144,7 +153,7 @@ def validate(root):
                                 assert panel['savgol_width_angstrom'] == manifest['plot_presentation']['savgol_width_angstrom']
                                 if manifest['plot_presentation'].get('observed_display'):
                                     assert panel['raw_observed_alpha'] == .2
-                                    assert panel['raw_observed_colour'] == '0.5'
+                                    assert panel['raw_observed_colour'] == manifest['plot_presentation']['raw_observed_colour']
                                     assert panel['telluric_samples_included'] is True
                                     assert panel['limit_rule'] == manifest['plot_presentation']['limit_rule']
                                 assert len(panel['legend_labels']) == 2
@@ -221,14 +230,13 @@ def validate(root):
         p = BrowserHTML(); p.feed(path.read_text()); parsed[path.resolve()] = p
         assert p.sn_count == len(objects), f'Missing SN navigation: {path.name}'
         assert 'fieldnotes' not in ' '.join(p.visible).lower(), 'Internal style label leaked into visible text'
+    source_paths = {Path(source['path']).resolve() for snapshot in frozen['snapshots']
+                    for source in snapshot['spectra'] if source.get('path')}
     for path, p in parsed.items():
         for href in p.links + p.images:
             url = urlsplit(href)
             if url.scheme == 'file':
-                source_paths = {Path(source['path']).resolve() for snapshot in frozen['snapshots']
-                                for source in snapshot['spectra'] if source.get('path')}
-                source_urls = {path.as_uri() for path in source_paths if path.is_file()}
-                assert href in allowed_template_urls | source_urls, 'Unverified external template or source-spectrum link'
+                assert href in allowed_template_urls or verified_source_link(href, source_paths), f'Unverified external template or source-spectrum link: {href}'
                 continue
             assert not unquote(url.path).lower().endswith('.pdf'), 'PDF link'
             assert not url.scheme and not url.netloc, f'Nonlocal asset/navigation: {href}'

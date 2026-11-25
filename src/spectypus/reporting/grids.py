@@ -5,8 +5,9 @@ from pathlib import Path
 import re
 
 # Retain the user's EFOSC spectrum palette alongside the canonical plot helper.
-OBSERVED_COLOUR = '#000000'
-MODEL_COLOUR = '#ef6666'
+OBSERVED_COLOUR = '0.4'
+RAW_OBSERVED_COLOUR = '0.5'
+MODEL_COLOUR = 'xkcd:bright red'
 LABEL_SIZE = 22.
 TICK_SIZE = RANK_SIZE = LABEL_SIZE
 LEGEND_SIZE = LABEL_SIZE * .9
@@ -126,11 +127,11 @@ def plot_saved_curves(ax, curve, labels=('Saved observed', 'Matched model'), smo
     observed = np.asarray(curve['observed'] if observed is None else observed, dtype=float)
     model = np.asarray(curve['model'] if model is None else model, dtype=float)
     if smoothed is None: smoothed, _ = smooth_observed(observed)
-    ax.plot(observed[:, 0], observed[:, 1], color='0.5', alpha=.2, lw=.75,
+    ax.plot(observed[:, 0], observed[:, 1], color=RAW_OBSERVED_COLOUR, alpha=.2, lw=.75,
             label='_nolegend_', zorder=2)
-    ax.plot(smoothed[:, 0], smoothed[:, 1], color=OBSERVED_COLOUR, lw=.85,
+    ax.plot(smoothed[:, 0], smoothed[:, 1], color=OBSERVED_COLOUR, lw=1.1,
             label=tex(labels[0]), zorder=3)
-    ax.plot(model[:, 0], model[:, 1], color=MODEL_COLOUR, lw=1.15,
+    ax.plot(model[:, 0], model[:, 1], color=MODEL_COLOUR, lw=2.30,
             label=tex(labels[1]), zorder=4)
     return observed
 
@@ -204,7 +205,7 @@ def create_figure(request):
         ax.text(RANK_X, .93, f'Rank {rank}', transform=ax.transAxes, va='top', fontsize=RANK_SIZE)
         styled_legend(ax, loc='lower right', bbox_to_anchor=(1., 1.015), shadow=False,
                       fontsize=LEGEND_SIZE, handlelength=1.5, borderpad=.35, labelspacing=.25)
-        info = {**smooth_info, **range_info, 'raw_observed_colour': '0.5', 'raw_observed_alpha': .2,
+        info = {**smooth_info, **range_info, 'raw_observed_colour': RAW_OBSERVED_COLOUR, 'raw_observed_alpha': .2,
                 'observed_source': 'full-staged-input', 'input_sha256': request['input_spectrum']['sha256'],
                 'observed_samples': len(observed), 'observed_wavelength_range': xlimits,
                 'model_display_transform': transform['kind'], 'model_samples_outside_limits': model_outside,

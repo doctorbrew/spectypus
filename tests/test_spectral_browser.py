@@ -147,6 +147,10 @@ def test_ten_angstrom_sg_includes_tellurics_and_preserves_raw_layer():
     plot_saved_curves(ax, {'observed': points, 'model': points, 'features': {'telluric_windows': [[6850, 6900]]}})
     np.testing.assert_array_equal(ax.lines[0][1], y)
     np.testing.assert_allclose(ax.lines[1][1], smooth[:, 1])
+    assert ax.lines[1][2]['color'] == '0.4'
+    assert ax.lines[1][2]['lw'] == 1.1
+    assert ax.lines[2][2]['lw'] == 2.30
+    assert ax.lines[2][2]['color'] == 'xkcd:bright red'
     assert ax.lines[0][2]['alpha'] == .2 and ax.lines[0][2]['color'] == '0.5'
     assert ax.lines[0][2]['zorder'] < ax.lines[1][2]['zorder']
 
@@ -488,3 +492,22 @@ def test_sage_file_location_uses_native_epoch_iteration_order(tmp_path):
         assert group == '/templates/sn2012dn/epochs/epoch_10'
         assert file[group].attrs['age'] == 10
         assert sage_group(file, 'sn2012dn', None) == '/templates/sn2012dn'
+
+
+def test_source_link_accepts_verified_symlink_but_rejects_other_targets(tmp_path):
+    from validate_spectral_browser import verified_source_link
+    source = tmp_path / 'source spectrum.dat'
+    source.write_text('4000 1')
+    alias = tmp_path / 'legacy.dat'
+    alias.symlink_to(source)
+    allowed = {source.resolve()}
+    assert verified_source_link(source.as_uri(), allowed)
+    assert verified_source_link(alias.as_uri(), allowed)
+    other = tmp_path / 'unlisted.dat'
+    other.write_text('4000 2')
+    alias.unlink()
+    alias.symlink_to(other)
+    assert not verified_source_link(alias.as_uri(), allowed)
+    assert not verified_source_link(source.as_uri().replace('file:///', 'file://remote/'), allowed)
+    source.unlink()
+    assert not verified_source_link(source.as_uri(), allowed)
