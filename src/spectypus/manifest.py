@@ -80,7 +80,11 @@ def spectrum_data(row: dict) -> tuple[str, dict]:
     source = Path(row["path"])
     if source.suffix.lower() in {".fits", ".fit", ".fts"}:
         raise ValueError("FITS ingestion is not implemented; provide reduced ASCII")
-    if row["wavelength_frame"] not in {"observer", "rest"}:
+    if not row.get("wavelength_frame"):
+        row["wavelength_frame"] = "observer"
+        row["frame_assumed"] = True
+        row.setdefault("frame_source", "wavelength_frame not specified; defaulted to observer frame")
+    elif row["wavelength_frame"] not in {"observer", "rest"}:
         raise ValueError("wavelength_frame must explicitly be observer or rest")
     units = {"angstrom": 1.0, "nm": 10.0}
     if row["wavelength_unit"] not in units:

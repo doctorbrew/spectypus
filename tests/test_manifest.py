@@ -127,6 +127,16 @@ def test_unsupported_units_and_frames_block(frame, unit, z, source_factory, mani
     assert rows[0]["blocked_reason"]
 
 
+def test_missing_wavelength_frame_defaults_to_observer_with_assumption_flag(tmp_path):
+    path = tmp_path / "s.dat"
+    path.write_text("4000 1\n5000 2\n")
+    row = {"path": str(path), "wavelength_frame": "", "wavelength_unit": "angstrom", "redshift": None}
+    content, report = spectrum_data(row)
+    assert content == "4000 1\n5000 2\n"
+    assert row["wavelength_frame"] == "observer" and row["frame_assumed"] is True
+    assert report["source_frame"] == "observer"
+
+
 def test_numeric_duplicates_keep_rows_and_conflicting_identity_blocks(source_factory, manifest_factory):
     rows = prepare_spectra(read_manifest(manifest_factory([source_factory("a"), source_factory("b")])))
     assert rows[0]["duplicate_of"] == "" and rows[1]["duplicate_of"] == "a"
