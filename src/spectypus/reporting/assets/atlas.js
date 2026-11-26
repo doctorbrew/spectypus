@@ -6,6 +6,11 @@
     const image = button.querySelector('img');
     dialog.querySelector('img').src = image.src;
     dialog.querySelector('img').alt = image.alt;
+    const save = dialog.querySelector('.save-figure');
+    save.href = image.src;
+    // Download the original image bytes, preserving resolution and JPEG metadata.
+    save.download = (image.alt || 'spectrum-figure')
+      .replace(/[^a-z0-9._-]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 160) + '.jpg';
     dialog.querySelector('p').textContent = image.alt;
     dialog.classList.remove('zoomed');
     dialog.querySelector('.zoom').textContent = 'Zoom to full resolution';

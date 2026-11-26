@@ -36,4 +36,4 @@ def page(title, body, stamp=None, back='', *, display='SpectralAtlas', extra_css
 <body><main><header><a class="brand" href="{h(back or '#top')}">Spectypus <span>/ {h(display)}</span></a></header>
 <div id="top"><h1>{h(title)}</h1></div>{body}
 </main>
-<dialog aria-label="Enlarged spectrum figure"><button type="button" class="close">Close figure</button><button type="button" class="zoom" aria-pressed="false">Zoom to full resolution</button><img alt=""><p></p></dialog><script>{js}</script></body></html>'''
+<dialog aria-label="Enlarged spectrum figure"><div class="figure-toolbar"><a class="save-figure" href="#top" download="">Save figure</a><button type="button" class="zoom" aria-pressed="false">Zoom to full resolution</button><button type="button" class="close">Close figure</button></div><img alt=""><p></p></dialog><script>{js}</script></body></html>'''

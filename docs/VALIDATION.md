@@ -62,3 +62,11 @@ A representative evaluation requires independent labels, object-disjoint splits,
 an explicit template-leakage policy, per-class precision/recall and confusion,
 coverage/abstention, and failure denominators. No calibrated-accuracy claim is
 supported by passing software tests. See [score semantics](USAGE.md).
+
+## Enlarged-figure downloads (2026-11-26)
+
+The shared viewer downloads the original JPG without re-encoding. All 47
+focused report/atlas/browser tests passed in the spectypus environment. Node
+syntax and interaction checks verified that opening successive figures updates
+the save URL and filename for embedded and local JPGs. Native browser download
+UI was not exercised; no historical figures or reports were regenerated.
